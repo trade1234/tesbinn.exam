@@ -25,7 +25,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
 
 const allowedOrigins = new Set([
-  ...env.clientUrls,
+  ...env.allowedOrigins,
   "https://examfrontend-f35t.onrender.com",
   "http://localhost:5173",
   "http://localhost:5174"
