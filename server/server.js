@@ -148,3 +148,5 @@ app.use("/api/users", userRoutes);
 app.use(notFound);
 app.use(errorHandler);
 
+export default app;
+
