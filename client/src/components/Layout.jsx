@@ -165,7 +165,7 @@ export default function Layout({ role }) {
 
   return (
     <div className={darkMode ? "dark" : ""}>
-      <div className="min-h-screen bg-[#e9eef6] p-0 text-slate-950 transition-colors dark:bg-[#101827] dark:text-slate-100 lg:p-6 xl:p-8">
+      <div className="h-screen w-screen overflow-hidden bg-[#e9eef6] p-0 text-slate-950 transition-colors dark:bg-[#101827] dark:text-slate-100">
         {toast && (
           <div className="fixed right-5 top-5 z-50 max-w-sm rounded-xl border border-emerald-200 bg-white p-4 text-slate-950 shadow-[0_24px_70px_rgba(16,185,129,0.25)] dark:border-emerald-900 dark:bg-[#111a2b] dark:text-slate-100">
             <div className="flex gap-3">
@@ -180,9 +180,8 @@ export default function Layout({ role }) {
           </div>
         )}
 
-        <div className="mx-auto min-h-screen max-w-[1500px] overflow-hidden bg-white shadow-[0_26px_70px_rgba(35,45,70,0.18)] transition-colors dark:bg-[#141f33] dark:shadow-[0_26px_70px_rgba(0,0,0,0.38)] lg:min-h-[calc(100vh-4rem)] lg:rounded-xl">
-          <div className="grid min-h-screen lg:min-h-[calc(100vh-4rem)] lg:grid-cols-[240px_minmax(0,1fr)] xl:grid-cols-[280px_minmax(0,1fr)]">
-            <aside className="hidden border-r border-slate-100 bg-white transition-colors dark:border-slate-800 dark:bg-[#111a2b] lg:flex lg:flex-col">
+        <div className="flex h-full w-full overflow-hidden bg-white transition-colors dark:bg-[#141f33]">
+          <aside className="hidden h-full w-[240px] shrink-0 border-r border-slate-100 bg-white transition-colors dark:border-slate-800 dark:bg-[#111a2b] lg:flex lg:flex-col xl:w-[280px]">
               <div className="flex h-[92px] items-center gap-4 border-b border-slate-100 px-5 xl:px-8 transition-colors dark:border-slate-800">
                 <div className="logo-tile flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full border border-slate-100 bg-white p-1.5 shadow-sm dark:border-white/70 dark:bg-white">
                   <img className="h-full w-full object-contain" src={logoUrl} alt="Trade Ethiopia logo" />
@@ -193,36 +192,36 @@ export default function Layout({ role }) {
                 </div>
               </div>
 
-              <nav className="flex-1 px-0 py-9">
-                <p className="mb-6 px-5 text-sm uppercase xl:px-9 text-slate-400 dark:text-slate-500">Menu</p>
-                <div className="space-y-3 px-4 xl:px-6">
-                  {links.map(({ to, label, icon: Icon }) => (
-                    <NavLink key={to} end to={to} className={({ isActive }) => `group flex min-h-12 items-center gap-4 rounded-xl border px-4 py-3 text-sm font-semibold shadow-sm xl:text-base transition ${isActive ? "border-[#1e9bf0] bg-[#edf6ff] text-[#0f88d2] shadow-blue-100 dark:border-[#38bdf8] dark:bg-[#17324d] dark:text-[#7dd3fc] dark:shadow-none" : "border-slate-100 bg-white text-slate-700 hover:border-blue-100 hover:bg-slate-50 dark:border-slate-800 dark:bg-[#111a2b] dark:text-slate-300 dark:hover:bg-slate-800/70"}`}>
-                      {({ isActive }) => (
-                        <>
-                          <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition ${isActive ? "bg-[#1e9bf0] text-white" : "bg-slate-100 text-slate-500 group-hover:bg-blue-50 group-hover:text-[#0f88d2] dark:bg-slate-800 dark:text-slate-400"}`}>
-                            <Icon size={19} />
-                          </span>
-                          <span>{label}</span>
-                        </>
-                      )}
-                    </NavLink>
-                  ))}
-                </div>
+              <nav className="flex-1 overflow-y-auto px-0 py-5 [scrollbar-width:thin]">
+              <p className="mb-3 px-5 text-xs font-bold tracking-wider uppercase xl:px-7 text-slate-400 dark:text-slate-500">Menu</p>
+              <div className="space-y-1.5 px-3 xl:px-5">
+                {links.map(({ to, label, icon: Icon }) => (
+                  <NavLink key={to} end to={to} className={({ isActive }) => `group flex min-h-10 items-center gap-3.5 rounded-xl border px-3.5 py-2 text-sm font-semibold shadow-sm transition ${isActive ? "border-[#1e9bf0] bg-[#edf6ff] text-[#0f88d2] shadow-blue-100 dark:border-[#38bdf8] dark:bg-[#17324d] dark:text-[#7dd3fc] dark:shadow-none" : "border-slate-100 bg-white text-slate-700 hover:border-blue-100 hover:bg-slate-50 dark:border-slate-800 dark:bg-[#111a2b] dark:text-slate-300 dark:hover:bg-slate-800/70"}`}>
+                    {({ isActive }) => (
+                      <>
+                        <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition ${isActive ? "bg-[#1e9bf0] text-white" : "bg-slate-100 text-slate-500 group-hover:bg-blue-50 group-hover:text-[#0f88d2] dark:bg-slate-800 dark:text-slate-400"}`}>
+                          <Icon size={17} />
+                        </span>
+                        <span>{label}</span>
+                      </>
+                    )}
+                  </NavLink>
+                ))}
+              </div>
 
-                <p className="mb-6 mt-12 px-5 text-sm uppercase xl:px-9 text-slate-400 dark:text-slate-500">Groups</p>
-                <div className="space-y-3 px-4 xl:px-6">
-                  {groups.map((group, index) => (
-                    <button key={group.label} className="flex min-h-11 w-full items-center gap-4 rounded-xl border border-slate-100 bg-white px-4 py-3 text-left text-sm font-semibold text-slate-800 shadow-sm transition hover:border-blue-100 hover:bg-slate-50 dark:border-slate-800 dark:bg-[#111a2b] dark:text-slate-300 dark:hover:bg-slate-800/70" type="button" onClick={() => navigate(group.to)}>
-                      <span className={`h-4 w-4 rounded-full border-2 ${["border-[#f59e0b]", "border-[#8b5cf6]", "border-[#ec4899]", "border-[#10b981]"][index]}`} />
-                      {group.label}
-                    </button>
-                  ))}
-                </div>
-              </nav>
+              <p className="mb-3 mt-6 px-5 text-xs font-bold tracking-wider uppercase xl:px-7 text-slate-400 dark:text-slate-500">Groups</p>
+              <div className="space-y-1.5 px-3 xl:px-5">
+                {groups.map((group, index) => (
+                  <button key={group.label} className="flex min-h-9 w-full items-center gap-3.5 rounded-xl border border-slate-100 bg-white px-3.5 py-2 text-left text-sm font-semibold text-slate-800 shadow-sm transition hover:border-blue-100 hover:bg-slate-50 dark:border-slate-800 dark:bg-[#111a2b] dark:text-slate-300 dark:hover:bg-slate-800/70" type="button" onClick={() => navigate(group.to)}>
+                    <span className={`h-3 w-3 rounded-full border-2 ${["border-[#f59e0b]", "border-[#8b5cf6]", "border-[#ec4899]", "border-[#10b981]"][index]}`} />
+                    {group.label}
+                  </button>
+                ))}
+              </div>
+            </nav>
 
-              <div className="px-5 py-8 xl:px-9">
-                <button className="flex w-full items-center justify-between rounded-xl bg-slate-50 px-4 py-3 text-base font-medium text-slate-700 transition hover:bg-slate-100 dark:bg-slate-800/70 dark:text-slate-200 dark:hover:bg-slate-700" type="button" onClick={() => setDarkMode((value) => !value)}>
+            <div className="px-4 py-4 xl:px-6">
+              <button className="flex w-full items-center justify-between rounded-xl bg-slate-50 px-3.5 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100 dark:bg-slate-800/70 dark:text-slate-200 dark:hover:bg-slate-700" type="button" onClick={() => setDarkMode((value) => !value)}>
                   <span className="flex items-center gap-3">
                     {darkMode ? <Sun size={19} className="text-amber-300" /> : <Moon size={19} className="text-slate-400" />}
                     {darkMode ? "Light Mode" : "Dark Mode"}
@@ -234,17 +233,17 @@ export default function Layout({ role }) {
               </div>
             </aside>
 
-            <main className="min-w-0 bg-[#fafafa] transition-colors dark:bg-[#0f172a]">
-              <header className="sticky top-0 z-20 flex min-h-[58px] items-center justify-between gap-2 border-b border-slate-100 bg-white px-3 transition-colors dark:border-slate-800 dark:bg-[#111a2b] min-[420px]:min-h-[68px] min-[420px]:px-4 sm:min-h-[92px] sm:px-6 lg:px-8 xl:px-16">
-                <div className="flex min-w-0 flex-1 items-center gap-2 sm:hidden">
-                  <div className="logo-tile flex h-9 w-9 shrink-0 min-[420px]:h-11 min-[420px]:w-11 items-center justify-center overflow-hidden rounded-full border border-slate-100 bg-white p-1 shadow-sm dark:border-white/70 dark:bg-white">
-                    <img className="h-full w-full object-contain" src={logoUrl} alt="Trade Ethiopia logo" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="truncate text-[11px] font-bold min-[420px]:text-sm text-slate-950 dark:text-slate-100">Trade Ethiopia SBI</p>
-                    <p className="hidden truncate text-xs text-slate-500 dark:text-slate-400 min-[420px]:block dark:text-slate-400">{role === "ADMIN" ? "Admin" : "Exams"}</p>
-                  </div>
+            <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden">
+              <header className="sticky top-0 z-20 flex min-h-[60px] items-center justify-between gap-2 border-b border-slate-100 bg-white px-3 transition-colors dark:border-slate-800 dark:bg-[#111a2b] sm:min-h-[68px] sm:px-6 lg:px-8 xl:px-12">
+              <div className="flex min-w-0 flex-1 items-center gap-2 sm:hidden">
+                <div className="logo-tile flex h-8 w-8 shrink-0 min-[420px]:h-10 min-[420px]:w-10 items-center justify-center overflow-hidden rounded-full border border-slate-100 bg-white p-1 shadow-sm dark:border-white/70 dark:bg-white">
+                  <img className="h-full w-full object-contain" src={logoUrl} alt="Trade Ethiopia logo" />
                 </div>
+                <div className="min-w-0">
+                  <p className="truncate text-[11px] font-bold min-[420px]:text-sm text-slate-950 dark:text-slate-100">Trade Ethiopia SBI</p>
+                  <p className="hidden truncate text-xs text-slate-500 dark:text-slate-400 min-[420px]:block dark:text-slate-400">{role === "ADMIN" ? "Admin" : "Exams"}</p>
+                </div>
+              </div>
                 <div className="hidden min-w-0 flex-1 items-center gap-4 sm:flex">
                   <Search size={22} className="text-slate-500 dark:text-slate-400" />
                   <input className="w-full max-w-md bg-transparent text-base outline-none placeholder:text-slate-500 dark:text-slate-100 dark:placeholder:text-slate-500" placeholder="Search..." />
@@ -289,7 +288,7 @@ export default function Layout({ role }) {
 
                   <div className="relative">
                     <button className="flex items-center gap-3 rounded-full pr-2 transition hover:bg-slate-50 dark:hover:bg-slate-800" type="button" onClick={() => setProfileOpen((value) => !value)} aria-label="Account menu">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-[#ff9b71] to-[#ec5cff] text-sm font-semibold text-white sm:h-12 sm:w-12 sm:text-lg">{initials}</div>
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-[#ff9b71] to-[#ec5cff] text-xs font-semibold text-white sm:h-10 sm:w-10 sm:text-base">{initials}</div>
                       <ChevronDown size={16} className={`hidden text-slate-500 transition min-[420px]:block ${profileOpen ? "rotate-180" : ""}`} />
                     </button>
 
@@ -297,7 +296,7 @@ export default function Layout({ role }) {
                       <div className="absolute right-0 top-14 z-50 w-72 overflow-hidden rounded-xl border border-slate-100 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.22)] dark:border-slate-800 dark:bg-[#111a2b]">
                         <div className="border-b border-slate-100 px-4 py-4 dark:border-slate-800">
                           <div className="flex items-center gap-3">
-                            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-[#ff9b71] to-[#ec5cff] text-base font-bold text-white">{initials}</div>
+                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-[#ff9b71] to-[#ec5cff] text-sm font-bold text-white">{initials}</div>
                             <div className="min-w-0">
                               <p className="truncate font-bold text-slate-950 dark:text-slate-100">{user?.name || "User"}</p>
                               <p className="hidden truncate text-xs text-slate-500 dark:text-slate-400 min-[420px]:block dark:text-slate-400">{user?.email || user?.enrollmentNumber}</p>
@@ -321,7 +320,8 @@ export default function Layout({ role }) {
                 </div>
               </header>
 
-              <section className="min-w-0 px-3 pb-24 pt-4 min-[420px]:px-4 min-[420px]:pt-5 sm:px-6 lg:px-8 xl:px-16 lg:py-12 xl:py-16">
+              <main className="min-w-0 flex-1 overflow-y-auto bg-[#fafafa] transition-colors dark:bg-[#0f172a]">
+                <section className="min-w-0 px-3 pb-24 pt-4 min-[420px]:px-4 min-[420px]:pt-5 sm:px-6 lg:px-8 xl:px-16 lg:py-12 xl:py-16">
                 <Outlet />
               </section>
 
