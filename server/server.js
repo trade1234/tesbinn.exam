@@ -53,8 +53,70 @@ app.get("/uploads/applications/:filename", serveApplicationUpload);
 app.use("/uploads", express.static(join(__dirname, "uploads")));
 app.use("/uploads", express.static(join(__dirname, "..", "uploads")));
 
-function healthResponse(_req, res) {
-  res.json({ status: "ok", service: "online-exam-server" });
+async function healthResponse(_req, res) {
+  try {
+    await connectDB();
+    res.send(`
+      <!DOCTYPE html>
+      <html lang="en">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>TESBINN API Status</title>
+          <style>
+            body { font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #edf4fb; color: #0f172a; text-align: center; padding: 60px 20px; margin: 0; }
+            .card { max-width: 500px; margin: 0 auto; background: white; padding: 40px; border-radius: 24px; box-shadow: 0 20px 50px rgba(15, 84, 122, 0.1); border: 1px solid #e1e8f0; }
+            h1 { color: #0f88d2; margin-top: 0; font-size: 28px; font-weight: 800; }
+            .status { display: inline-block; padding: 8px 16px; border-radius: 12px; font-weight: bold; margin-bottom: 20px; }
+            .success { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+            .details { text-align: left; background: #f8fafc; padding: 20px; border-radius: 16px; border: 1px solid #e2e8f0; font-size: 14px; }
+            .details p { margin: 10px 0; }
+            .label { font-weight: bold; color: #475569; }
+          </style>
+        </head>
+        <body>
+          <div class="card">
+            <h1>TESBINN API Status</h1>
+            <div class="status success">✓ System & Database Connected</div>
+            <div class="details">
+              <p><span class="label">Service Name:</span> Online Examination Server</p>
+              <p><span class="label">Operational Status:</span> Operational</p>
+              <p><span class="label">Database Connectivity:</span> Connected Successfully</p>
+              <p><span class="label">Environment Host:</span> ${process.env.VERCEL ? 'Vercel Serverless' : 'Local Host'}</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `);
+  } catch (error) {
+    res.status(500).send(`
+      <!DOCTYPE html>
+      <html lang="en">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>TESBINN API - Error</title>
+          <style>
+            body { font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #fef2f2; color: #991b1b; text-align: center; padding: 60px 20px; margin: 0; }
+            .card { max-width: 500px; margin: 0 auto; background: white; padding: 40px; border-radius: 24px; box-shadow: 0 20px 50px rgba(153, 27, 27, 0.1); border: 1px solid #fecaca; }
+            h1 { color: #dc2626; margin-top: 0; font-size: 28px; font-weight: 800; }
+            .status { display: inline-block; padding: 8px 16px; border-radius: 12px; font-weight: bold; margin-bottom: 20px; background: #fee2e2; border: 1px solid #fca5a5; }
+            .details { text-align: left; background: #fff5f5; padding: 20px; border-radius: 16px; border: 1px solid #fee2e2; font-size: 14px; color: #7f1d1d; line-height: 1.5; }
+          </style>
+        </head>
+        <body>
+          <div class="card">
+            <h1>Database Connection Failed</h1>
+            <div class="status">❌ Disconnected</div>
+            <div class="details">
+              <p><strong>Error Message:</strong> ${error.message}</p>
+              <p>Please check your <code>MONGO_URI</code> environment variable in your Vercel settings, and confirm that your MongoDB Atlas cluster allows connection requests from Vercel serverless IPs (IP access list includes <code>0.0.0.0/0</code>).</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `);
+  }
 }
 
 app.get("/", healthResponse);

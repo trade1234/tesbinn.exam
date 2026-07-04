@@ -12,6 +12,7 @@
     "@vitejs/plugin-react": "^4.3.4",
     "axios": "^1.7.9",
     "lucide-react": "^0.468.0",
+    "online-examination-system": "file:..",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-hook-form": "^7.54.2",

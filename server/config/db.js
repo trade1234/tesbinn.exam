@@ -1,6 +1,16 @@
 import mongoose from "mongoose";
+import dns from "node:dns";
 
-let connectionPromise;
+if (!process.env.VERCEL) {
+  try {
+    dns.setServers(["8.8.8.8", "8.8.4.4"]);
+  } catch (dnsError) {
+    console.warn("Unable to set DNS servers to Google public DNS:", dnsError);
+  }
+}
+
+let cachedConnection = global.mongooseConnection;
+let cachedPromise = global.mongoosePromise;
 
 export async function connectDB() {
   if (!process.env.MONGO_URI) {
@@ -11,21 +21,28 @@ export async function connectDB() {
     return mongoose.connection;
   }
 
-  if (connectionPromise) {
-    return connectionPromise;
+  if (cachedConnection) {
+    return cachedConnection;
   }
 
-  mongoose.set("strictQuery", true);
-  connectionPromise = mongoose
-    .connect(process.env.MONGO_URI, { serverSelectionTimeoutMS: 5000 })
-    .then((connection) => {
-      console.log("MongoDB connected");
-      return connection;
-    })
-    .catch((error) => {
-      connectionPromise = undefined;
-      throw error;
-    });
+  if (!cachedPromise) {
+    mongoose.set("strictQuery", true);
+    cachedPromise = mongoose
+      .connect(process.env.MONGO_URI, {
+        serverSelectionTimeoutMS: 5000,
+        bufferCommands: false
+      })
+      .then((mongooseInstance) => {
+        console.log("MongoDB connected");
+        cachedConnection = mongooseInstance.connection;
+        global.mongooseConnection = cachedConnection;
+        return cachedConnection;
+      })
+      .catch((error) => {
+        cachedPromise = null;
+        throw error;
+      });
+  }
 
-  return connectionPromise;
+  return cachedPromise;
 }
