@@ -5,6 +5,7 @@ import { Answer } from "../models/Answer.js";
 import { Exam } from "../models/Exam.js";
 import { Course } from "../models/Course.js";
 import { ActivityLog } from "../models/ActivityLog.js";
+import { findAssignedCourseForStudent } from "../utils/courseAccess.js";
 import { logActivity } from "../utils/logger.js";
 
 function generateStudentPassword() {
@@ -154,9 +155,15 @@ export async function setStudentActive(req, res, next) {
 
 export async function studentDashboard(req, res, next) {
   try {
+    const assignedCourse = await findAssignedCourseForStudent(req.user);
+    const courseQuery = assignedCourse ? { _id: assignedCourse._id } : { _id: null };
+    const examQuery = assignedCourse
+      ? { courseId: assignedCourse._id, startDate: { $gte: new Date() } }
+      : { _id: null };
+
     const [courses, upcomingExams, recentResults] = await Promise.all([
-      Course.find().limit(6).sort({ createdAt: -1 }),
-      Exam.find({ startDate: { $gte: new Date() } }).populate("courseId").limit(6).sort({ startDate: 1 }),
+      Course.find(courseQuery).limit(6).sort({ createdAt: -1 }),
+      Exam.find(examQuery).populate("courseId").limit(6).sort({ startDate: 1 }),
       ExamAttempt.find({ studentId: req.user._id, status: { $ne: "IN_PROGRESS" } })
         .populate({ path: "examId", populate: { path: "courseId" } })
         .limit(5)
