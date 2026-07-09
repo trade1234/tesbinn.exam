@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { BriefcaseBusiness, Eye, FileCheck2, GraduationCap, Printer, Search, Trash2, UserRound } from "lucide-react";
+import { Eye, FileCheck2, GraduationCap, Printer, Search, Trash2, UserRound } from "lucide-react";
 import DataTable from "../components/DataTable.jsx";
 import Modal from "../components/Modal.jsx";
 import { api, assetUrl } from "../services/api.js";
@@ -21,43 +21,27 @@ function printApplication(application) {
 
   const personal = application.personalInformation || {};
   const training = application.trainingInformation || {};
-  const employment = application.employmentInformation || {};
-  const assessment = application.assessmentInformation || {};
   const payment = application.paymentInformation || {};
   const sections = [
     ["Personal Information", [
       ["Full Name", fullName(personal)],
       ["Gender", personal.gender],
       ["Age", personal.age],
-      ["Nationality", personal.nationality],
       ["Phone", personal.phoneNumber],
       ["Email", personal.email],
       ["Sub City", personal.subCity],
       ["Woreda", personal.woreda],
       ["Address", personal.address],
-      ["Marital Status", personal.maritalStatus],
-      ["Physical Disability", personal.physicalDisability],
-      ["Disability Description", personal.disabilityDescription]
     ]],
     ["Training Information", [
-      ["Occupation", training.occupation],
-      ["College/Institute", training.collegeInstituteName],
       ["Institution Type", training.institutionType],
       ["Training Start Month", training.trainingStartMonth],
       ["Training End Month", training.trainingEndMonth],
       ["Training Mode", training.trainingMode],
       ["Training Program", training.trainingProgram],
       ["Training Type", training.trainingType],
-      ["Cooperative Training", training.cooperativeTraining]
     ]],
-    ["Employment Information", [
-      ["Employment Status", employment.employmentStatus],
-      ["Company Name", employment.companyName],
-      ["Company Category", employment.companyCategory]
-    ]],
-    ["Assessment Information", [
-      ["Register For", assessment.registerFor],
-      ["Assessment Type", assessment.assessmentType],
+    ["Application Information", [
       ["Agreement", application.agreementAccepted ? "Confirmed" : "Not confirmed"],
       ["Passport Photo", application.passportPhoto?.originalName],
       ["FAYADA / National ID", application.fayadaDigitalId?.originalName]
@@ -183,15 +167,11 @@ function PersonalInformationSection({ application }) {
     ["Full Name", fullName(application.personalInformation)],
     ["Gender", application.personalInformation?.gender],
     ["Age", application.personalInformation?.age],
-    ["Nationality", application.personalInformation?.nationality],
     ["Phone", application.personalInformation?.phoneNumber],
     ["Email", application.personalInformation?.email],
     ["Sub City", application.personalInformation?.subCity],
     ["Woreda", application.personalInformation?.woreda],
     ["Address", application.personalInformation?.address],
-    ["Marital Status", application.personalInformation?.maritalStatus],
-    ["Physical Disability", application.personalInformation?.physicalDisability],
-    ["Disability Description", application.personalInformation?.disabilityDescription]
   ];
 
   return (
@@ -305,17 +285,12 @@ export default function Applications() {
     return monthMatches && programMatches;
   }), [rows, filterMonth, filterProgram]);
 
-  const stats = useMemo(() => {
-    const theory = filteredRows.filter((row) => row.assessmentInformation?.registerFor === "Theory").length;
-    const practical = filteredRows.filter((row) => row.assessmentInformation?.registerFor === "Practical").length;
-    const both = filteredRows.filter((row) => row.assessmentInformation?.registerFor === "Both").length;
-    return [
-      { label: "Total Applications", value: filteredRows.length },
-      { label: "Theory", value: theory },
-      { label: "Practical", value: practical },
-      { label: "Both", value: both }
-    ];
-  }, [filteredRows]);
+  const stats = useMemo(() => [
+    { label: "Total Applications", value: filteredRows.length },
+    { label: "Coffee Cupping", value: filteredRows.filter((row) => row.trainingInformation?.trainingProgram === "Coffee Cupping").length },
+    { label: "Barista", value: filteredRows.filter((row) => row.trainingInformation?.trainingProgram === "Barista").length },
+    { label: "Other Programs", value: filteredRows.filter((row) => !["Coffee Cupping", "Barista"].includes(row.trainingInformation?.trainingProgram)).length }
+  ], [filteredRows]);
 
   const columns = [
     {
@@ -333,17 +308,8 @@ export default function Applications() {
         </div>
       )
     },
-    { key: "occupation", label: "Occupation", render: (row) => row.trainingInformation?.occupation || "Not provided" },
-    {
-      key: "registerFor",
-      label: "Register For",
-      render: (row) => (
-        <span className="inline-flex rounded-full bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700 dark:bg-[#17324d] dark:text-sky-300">
-          {row.assessmentInformation?.registerFor || "Not set"}
-        </span>
-      )
-    },
-    { key: "assessmentType", label: "Type", render: (row) => row.assessmentInformation?.assessmentType || "Not set" },
+    { key: "trainingProgram", label: "Training Program", render: (row) => row.trainingInformation?.trainingProgram || "Not provided" },
+    { key: "trainingType", label: "Training Type", render: (row) => row.trainingInformation?.trainingType || "Not provided" },
     { key: "submittedAt", label: "Submitted", render: (row) => formatDate(row.submittedAt || row.createdAt) },
     {
       key: "actions",
@@ -440,26 +406,14 @@ export default function Applications() {
             <PersonalInformationSection application={selected} />
 
             <DetailSection title="Training Information" icon={GraduationCap} items={[
-              ["Occupation", selected.trainingInformation?.occupation],
-              ["College/Institute", selected.trainingInformation?.collegeInstituteName],
               ["Institution Type", selected.trainingInformation?.institutionType],
               ["Training Start Month", selected.trainingInformation?.trainingStartMonth],
               ["Training End Month", selected.trainingInformation?.trainingEndMonth],
               ["Training Mode", selected.trainingInformation?.trainingMode],
               ["Training Program", selected.trainingInformation?.trainingProgram],
               ["Training Type", selected.trainingInformation?.trainingType],
-              ["Cooperative Training", selected.trainingInformation?.cooperativeTraining]
             ]} />
-
-            <DetailSection title="Employment Information" icon={BriefcaseBusiness} items={[
-              ["Employment Status", selected.employmentInformation?.employmentStatus],
-              ["Company Name", selected.employmentInformation?.companyName],
-              ["Company Category", selected.employmentInformation?.companyCategory]
-            ]} />
-
-            <DetailSection title="Assessment Information" icon={FileCheck2} items={[
-              ["Register For", selected.assessmentInformation?.registerFor],
-              ["Assessment Type", selected.assessmentInformation?.assessmentType],
+            <DetailSection title="Application Information" icon={FileCheck2} items={[
               ["Agreement", selected.agreementAccepted ? "Confirmed" : "Not confirmed"],
               ["Photo File", selected.passportPhoto?.originalName],
               ["FAYADA / National ID File", selected.fayadaDigitalId?.originalName]
@@ -479,4 +433,3 @@ export default function Applications() {
     </div>
   );
 }
-

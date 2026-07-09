@@ -9,35 +9,19 @@ const applicationSchema = new mongoose.Schema(
       grandfatherName: { type: String, required: true, trim: true },
       gender: { type: String, required: true, enum: ["Male", "Female"] },
       age: { type: Number, required: true, min: 15, max: 100 },
-      nationality: { type: String, required: true, trim: true },
       subCity: { type: String, required: true, trim: true },
       woreda: { type: String, required: true, trim: true },
       address: { type: String, required: true, trim: true },
       phoneNumber: { type: String, required: true, trim: true },
       email: { type: String, trim: true, lowercase: true },
-      maritalStatus: { type: String, required: true, enum: ["Single", "Married"] },
-      physicalDisability: { type: String, required: true, enum: ["Yes", "No"] },
-      disabilityDescription: { type: String, trim: true, default: "" }
     },
     trainingInformation: {
-      occupation: { type: String, required: true, trim: true },
-      collegeInstituteName: { type: String, required: true, trim: true },
       institutionType: { type: String, required: true, enum: ["Government", "Private", "Other"] },
       trainingStartMonth: { type: String, required: true },
       trainingEndMonth: { type: String, required: true },
       trainingMode: { type: String, required: true, enum: ["Regular", "Extension", "Distance", "Other"] },
       trainingProgram: { type: String, required: true, enum: ["Coffee Cupping", "Barista", "Digital Marketing", "International Import Export"] },
-      trainingType: { type: String, required: true, enum: ["Formal", "Non-formal"] },
-      cooperativeTraining: { type: String, required: true, enum: ["Large scale enterprise", "Medium scale enterprise", "Small scale enterprise", "None"] }
-    },
-    employmentInformation: {
-      employmentStatus: { type: String, required: true, enum: ["Self employed", "Government employed", "Private employed", "Unemployed"] },
-      companyName: { type: String, trim: true, default: "" },
-      companyCategory: { type: String, required: true, enum: ["Micro and small scale enterprise", "Medium and large enterprise", "Not applicable"] }
-    },
-    assessmentInformation: {
-      registerFor: { type: String, required: true, enum: ["Theory", "Practical", "Both"] },
-      assessmentType: { type: String, required: true, enum: ["New Assessment", "Reassessment"] }
+      trainingType: { type: String, required: true, enum: ["Formal", "Non-formal", "VIP", "Nights"] },
     },
     passportPhoto: {
       filename: { type: String, required: true },
@@ -77,4 +61,3 @@ const applicationSchema = new mongoose.Schema(
 );
 
 export const Application = mongoose.model("Application", applicationSchema);
-

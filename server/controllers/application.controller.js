@@ -37,38 +37,23 @@ const applicationSchema = z.object({
   grandfatherName: z.string().trim().min(1, "Grandfather name is required"),
   gender: z.enum(["Male", "Female"]),
   age: z.coerce.number().int().min(15).max(100),
-  nationality: z.string().trim().min(1, "Nationality is required"),
   subCity: z.string().trim().min(1, "Sub city is required"),
   woreda: z.string().trim().min(1, "Woreda is required"),
   address: z.string().trim().min(1, "Address is required"),
   phoneNumber: z.string().trim().min(7, "Phone number is required"),
   email: z.string().trim().email("Email is invalid").optional().or(z.literal("")),
-  maritalStatus: z.enum(["Single", "Married"]),
-  physicalDisability: z.enum(["Yes", "No"]),
-  disabilityDescription: z.string().trim().optional(),
-  occupation: z.string().trim().min(1, "Occupation is required"),
-  collegeInstituteName: z.string().trim().min(1, "College or institute name is required"),
   institutionType: z.enum(["Government", "Private", "Other"]),
   trainingStartMonth: z.string().regex(/^\d{4}-\d{2}$/, "Training start month is required"),
   trainingEndMonth: z.string().regex(/^\d{4}-\d{2}$/, "Training end month is required"),
   trainingMode: z.enum(["Regular", "Extension", "Distance", "Other"]),
   trainingProgram: z.enum(["Coffee Cupping", "Barista", "Digital Marketing", "International Import Export"]),
-  trainingType: z.enum(["Formal", "Non-formal"]),
-  cooperativeTraining: z.enum(["Large scale enterprise", "Medium scale enterprise", "Small scale enterprise", "None"]),
-  employmentStatus: z.enum(["Self employed", "Government employed", "Private employed", "Unemployed"]),
-  companyName: z.string().trim().optional(),
-  companyCategory: z.enum(["Micro and small scale enterprise", "Medium and large enterprise", "Not applicable"]),
-  registerFor: z.enum(["Theory", "Practical", "Both"]),
-  assessmentType: z.enum(["New Assessment", "Reassessment"]),
+  trainingType: z.enum(["Formal", "Non-formal", "VIP", "Nights"]),
   paymentBank: z.enum(ethiopianBanks),
   agreementAccepted: z.coerce.boolean().refine((value) => value === true, "Confirmation is required"),
   digitalSignature: z.string().trim().optional()
 }).superRefine((data, ctx) => {
   if (data.trainingEndMonth < data.trainingStartMonth) {
     ctx.addIssue({ code: "custom", path: ["trainingEndMonth"], message: "End month cannot be before start month" });
-  }
-  if (data.physicalDisability === "Yes" && !data.disabilityDescription?.trim()) {
-    ctx.addIssue({ code: "custom", path: ["disabilityDescription"], message: "Please describe the disability" });
   }
 });
 
@@ -180,35 +165,19 @@ export async function createApplication(req, res, next) {
         grandfatherName: parsed.grandfatherName,
         gender: parsed.gender,
         age: parsed.age,
-        nationality: parsed.nationality,
         subCity: parsed.subCity,
         woreda: parsed.woreda,
         address: parsed.address,
         phoneNumber: parsed.phoneNumber,
         email: parsed.email || "",
-        maritalStatus: parsed.maritalStatus,
-        physicalDisability: parsed.physicalDisability,
-        disabilityDescription: parsed.disabilityDescription || ""
       },
       trainingInformation: {
-        occupation: parsed.occupation,
-        collegeInstituteName: parsed.collegeInstituteName,
         institutionType: parsed.institutionType,
         trainingStartMonth: parsed.trainingStartMonth,
         trainingEndMonth: parsed.trainingEndMonth,
         trainingMode: parsed.trainingMode,
         trainingProgram: parsed.trainingProgram,
         trainingType: parsed.trainingType,
-        cooperativeTraining: parsed.cooperativeTraining
-      },
-      employmentInformation: {
-        employmentStatus: parsed.employmentStatus,
-        companyName: parsed.companyName || "",
-        companyCategory: parsed.companyCategory
-      },
-      assessmentInformation: {
-        registerFor: parsed.registerFor,
-        assessmentType: parsed.assessmentType
       },
       paymentInformation: {
         bankName: parsed.paymentBank
@@ -256,8 +225,6 @@ export async function listApplications(req, res, next) {
         { "personalInformation.grandfatherName": pattern },
         { "personalInformation.phoneNumber": pattern },
         { "personalInformation.email": pattern },
-        { "trainingInformation.occupation": pattern },
-        { "trainingInformation.collegeInstituteName": pattern },
         { "trainingInformation.trainingProgram": pattern }
       ];
     }

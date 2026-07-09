@@ -7,30 +7,23 @@ import tessbinLogo from "../logo/download.png";
 const steps = [
   "Personal Information",
   "Training Information",
-  "Employment & Assessment",
   "Payment",
   "Review & Submit"
 ];
 
 const fieldGroups = [
   [
-    "firstName", "lastName", "grandfatherName", "gender", "age", "nationality", "subCity",
-    "woreda", "address", "phoneNumber", "maritalStatus", "physicalDisability", "passportPhoto", "fayadaDigitalId"
+    "firstName", "lastName", "grandfatherName", "gender", "age", "subCity",
+    "woreda", "address", "phoneNumber", "passportPhoto", "fayadaDigitalId"
   ],
   [
-    "occupation", "collegeInstituteName", "institutionType", "trainingStartMonth", "trainingEndMonth", "trainingMode", "trainingProgram", "trainingType", "cooperativeTraining"
+    "institutionType", "trainingStartMonth", "trainingEndMonth", "trainingMode", "trainingProgram", "trainingType"
   ],
-  ["employmentStatus", "companyCategory", "registerFor", "assessmentType"],
   ["paymentBank", "paymentScreenshot"],
   ["agreementAccepted"]
 ];
 
-const defaultValues = {
-  physicalDisability: "No",
-  companyCategory: "Not applicable",
-  registerFor: "Both",
-  assessmentType: "New Assessment"
-};
+const defaultValues = {};
 
 const ethiopianBanks = [
   "Commercial Bank of Ethiopia",
@@ -291,38 +284,25 @@ export default function ApplicationRegistration() {
     ["Grandfather Name", values.grandfatherName],
     ["Gender", values.gender],
     ["Age", values.age],
-    ["Nationality", values.nationality],
     ["Sub City", values.subCity],
     ["Woreda", values.woreda],
     ["Address", values.address],
     ["Phone Number", values.phoneNumber],
     ["Email", values.email],
-    ["Marital Status", values.maritalStatus],
-    ["Physical Disability", values.physicalDisability],
-    ...(values.disabilityDescription ? [["Disability Description", values.disabilityDescription]] : []),
     ["Passport Photo", photoStatus, { mobileHidden: true }],
     ["FAYADA DIGITAL ID", fayadaStatus, { mobileHidden: true }],
-    ["Occupation", values.occupation],
-    ["College/Institute Name", values.collegeInstituteName],
     ["Institution Type", values.institutionType],
     ["Training Start Month", values.trainingStartMonth],
     ["Training End Month", values.trainingEndMonth],
     ["Training Mode", values.trainingMode],
     ["Training Program", values.trainingProgram],
     ["Training Type", values.trainingType],
-    ["Cooperative Training", values.cooperativeTraining],
-    ["Employment Status", values.employmentStatus],
-    ["Company Name", values.companyName],
-    ["Company Category", values.companyCategory],
-    ["Register For", values.registerFor],
-    ["Assessment Type", values.assessmentType],
     ["Payment Bank", values.paymentBank],
     ["Payment Screenshot", paymentScreenshotStatus, { mobileHidden: true }]
   ], [values, photoStatus, fayadaStatus, paymentScreenshotStatus]);
 
   async function goNext() {
     const fields = [...fieldGroups[step]];
-    if (step === 0 && values.physicalDisability === "Yes") fields.push("disabilityDescription");
     const isValid = await trigger(fields, { shouldFocus: true });
     if (isValid) setStep((current) => Math.min(current + 1, steps.length - 1));
   }
@@ -416,15 +396,11 @@ export default function ApplicationRegistration() {
                   <TextField label="Grandfather Name" error={errors.grandfatherName} registerProps={register("grandfatherName", { required: "Grandfather name is required" })} />
                   <SelectField label="Gender" error={errors.gender} registerProps={register("gender", { required: "Gender is required" })}><option value="">Select gender</option><option>Male</option><option>Female</option></SelectField>
                   <TextField label="Age" type="number" error={errors.age} registerProps={register("age", { required: "Age is required", min: { value: 15, message: "Minimum age is 15" } })} />
-                  <TextField label="Nationality" error={errors.nationality} registerProps={register("nationality", { required: "Nationality is required" })} />
                   <TextField label="Sub City" error={errors.subCity} registerProps={register("subCity", { required: "Sub city is required" })} />
                   <TextField label="Woreda" error={errors.woreda} registerProps={register("woreda", { required: "Woreda is required" })} />
                   <TextField label="Phone Number" error={errors.phoneNumber} registerProps={register("phoneNumber", { required: "Phone number is required", minLength: { value: 7, message: "Enter a valid phone number" } })} />
                   <TextField label={<span>Email <span className="muted-text">(optional)</span></span>} type="email" span="half" error={errors.email} registerProps={register("email", { pattern: { value: /^\S+@\S+$/i, message: "Enter a valid email" } })} />
-                  <SelectField label="Marital Status" span="half" error={errors.maritalStatus} registerProps={register("maritalStatus", { required: "Marital status is required" })}><option value="">Select status</option><option>Single</option><option>Married</option></SelectField>
                   <Field label="Address" error={errors.address} span="full"><textarea className={`form-control ${errors.address ? "is-invalid" : ""}`} rows={2} {...register("address", { required: "Address is required" })} /></Field>
-                  <RadioGroup label="Physical Disability" options={["No", "Yes"]} registerProps={register("physicalDisability", { required: true })} />
-                  {values.physicalDisability === "Yes" && <TextField label="Disability Description" span="half" error={errors.disabilityDescription} registerProps={register("disabilityDescription", { required: "Disability description is required" })} />}
                   <Field label="Upload Passport Photo (3x4)" error={errors.passportPhoto} span="half"><input className={`form-control ${errors.passportPhoto ? "is-invalid" : ""}`} type="file" accept="image/png,image/jpeg,image/webp" {...register("passportPhoto", { validate: validateUpload })} /></Field>
                   <Field label="Upload FAYADA DIGITAL ID" error={errors.fayadaDigitalId} span="half"><input className={`form-control ${errors.fayadaDigitalId ? "is-invalid" : ""}`} type="file" accept="image/png,image/jpeg,image/webp" {...register("fayadaDigitalId", { validate: validateUpload })} /></Field>
                 </div>
@@ -432,29 +408,15 @@ export default function ApplicationRegistration() {
 
               {step === 1 && (
                 <div className="form-grid">
-                  <TextField label="Occupation" span="half" error={errors.occupation} registerProps={register("occupation", { required: "Occupation is required" })} />
-                  <TextField label="College/Institute Name" span="full" error={errors.collegeInstituteName} registerProps={register("collegeInstituteName", { required: "College or institute name is required" })} />
                   <SelectField label="Institution Type" error={errors.institutionType} registerProps={register("institutionType", { required: "Institution type is required" })}><option value="">Select type</option><option>Government</option><option>Private</option><option>Other</option></SelectField>
                   <TextField label="Training Start Month" type="month" error={errors.trainingStartMonth} registerProps={register("trainingStartMonth", { required: "Training start month is required" })} />
                   <TextField label="Training End Month" type="month" min={values.trainingStartMonth || undefined} error={errors.trainingEndMonth} registerProps={register("trainingEndMonth", { required: "Training end month is required", validate: (value) => !values.trainingStartMonth || !value || value >= values.trainingStartMonth || "End month cannot be before start month" })} />
                   <SelectField label="Training Mode" error={errors.trainingMode} registerProps={register("trainingMode", { required: "Training mode is required" })}><option value="">Select mode</option><option>Regular</option><option>Extension</option><option>Distance</option><option>Other</option></SelectField>
                   <SelectField label="Training Program" error={errors.trainingProgram} registerProps={register("trainingProgram", { required: "Training program is required" })}><option value="">Select program</option><option>Coffee Cupping</option><option>Barista</option><option>Digital Marketing</option><option>International Import Export</option></SelectField>
-                  <SelectField label="Training Type" error={errors.trainingType} registerProps={register("trainingType", { required: "Training type is required" })}><option value="">Select type</option><option>Formal</option><option>Non-formal</option></SelectField>
-                  <SelectField label="Cooperative Training" error={errors.cooperativeTraining} registerProps={register("cooperativeTraining", { required: "Cooperative training is required" })}><option value="">Select option</option><option>Large scale enterprise</option><option>Medium scale enterprise</option><option>Small scale enterprise</option><option>None</option></SelectField>
+                  <SelectField label="Training Type" error={errors.trainingType} registerProps={register("trainingType", { required: "Training type is required" })}><option value="">Select type</option><option>Formal</option><option>Non-formal</option><option>VIP</option><option>Nights</option></SelectField>
                 </div>
               )}
-
               {step === 2 && (
-                <div className="form-grid">
-                  <SelectField label="Employment Status" span="half" error={errors.employmentStatus} registerProps={register("employmentStatus", { required: "Employment status is required" })}><option value="">Select status</option><option>Self employed</option><option>Government employed</option><option>Private employed</option><option>Unemployed</option></SelectField>
-                  <TextField label={<span>Company Name <span className="muted-text">(optional)</span></span>} span="half" registerProps={register("companyName")} />
-                  <SelectField label="Company Category" span="half" error={errors.companyCategory} registerProps={register("companyCategory", { required: "Company category is required" })}><option>Not applicable</option><option>Micro and small scale enterprise</option><option>Medium and large enterprise</option></SelectField>
-                  <RadioGroup label="Register For" options={["Theory", "Practical", "Both"]} error={errors.registerFor} registerProps={register("registerFor", { required: "Select what to register for" })} />
-                  <RadioGroup label="Assessment Type" options={["New Assessment", "Reassessment"]} error={errors.assessmentType} registerProps={register("assessmentType", { required: "Assessment type is required" })} />
-                </div>
-              )}
-
-              {step === 3 && (
                 <div className="form-grid">
                   <SelectField label="Payment Bank" span="half" error={errors.paymentBank} registerProps={register("paymentBank", { required: "Payment bank is required" })}>
                     <option value="">Select bank</option>
@@ -464,7 +426,7 @@ export default function ApplicationRegistration() {
                 </div>
               )}
 
-              {step === 4 && (
+              {step === 3 && (
                 <div>
                   <div className="review-grid">{reviewItems.map(([label, value, options]) => <ReviewItem key={label} label={label} value={value} mobileHidden={options?.mobileHidden} />)}</div>
                   <label className="agreement-check">
@@ -504,5 +466,3 @@ export default function ApplicationRegistration() {
     </main>
   );
 }
-
-
