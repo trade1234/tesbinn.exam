@@ -24,12 +24,12 @@ const applicationSchema = new mongoose.Schema(
       trainingType: { type: String, required: true, enum: ["Formal", "Non-formal", "VIP", "Nights"] },
     },
     passportPhoto: {
-      filename: { type: String, required: true },
-      originalName: { type: String, required: true },
-      path: { type: String, required: true },
+      filename: { type: String },
+      originalName: { type: String },
+      path: { type: String },
       storage: { type: String, default: "mongodb" },
-      mimetype: { type: String, required: true },
-      size: { type: Number, required: true },
+      mimetype: { type: String },
+      size: { type: Number },
       data: { type: Buffer, select: false }
     },
     fayadaDigitalId: {
@@ -61,3 +61,4 @@ const applicationSchema = new mongoose.Schema(
 );
 
 export const Application = mongoose.model("Application", applicationSchema);
+

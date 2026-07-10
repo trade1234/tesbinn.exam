@@ -14,7 +14,7 @@ const steps = [
 const fieldGroups = [
   [
     "firstName", "lastName", "grandfatherName", "gender", "age", "subCity",
-    "woreda", "address", "phoneNumber", "passportPhoto", "fayadaDigitalId"
+    "woreda", "address", "phoneNumber", "fayadaDigitalId"
   ],
   [
     "institutionType", "trainingStartMonth", "trainingEndMonth", "trainingMode", "trainingProgram", "trainingType"
@@ -58,6 +58,13 @@ const maxImageDimension = 1600;
 function validateUpload(files) {
   const file = files?.[0];
   if (!file) return "This image is required";
+  if (!allowedImageTypes.includes(file.type)) return "Uploaded files must be JPG, PNG, or WEBP";
+  return true;
+}
+
+function validateOptionalUpload(files) {
+  const file = files?.[0];
+  if (!file) return true;
   if (!allowedImageTypes.includes(file.type)) return "Uploaded files must be JPG, PNG, or WEBP";
   return true;
 }
@@ -324,11 +331,11 @@ export default function ApplicationRegistration() {
     });
     try {
       const [passportPhoto, fayadaDigitalId, paymentScreenshot] = await Promise.all([
-        compressImageFile(data.passportPhoto[0]),
+        data.passportPhoto?.[0] ? compressImageFile(data.passportPhoto[0]) : null,
         compressImageFile(data.fayadaDigitalId[0]),
         compressImageFile(data.paymentScreenshot[0])
       ]);
-      formData.append("passportPhoto", passportPhoto);
+      if (passportPhoto) formData.append("passportPhoto", passportPhoto);
       formData.append("fayadaDigitalId", fayadaDigitalId);
       formData.append("paymentScreenshot", paymentScreenshot);
 
@@ -401,7 +408,7 @@ export default function ApplicationRegistration() {
                   <TextField label="Phone Number" error={errors.phoneNumber} registerProps={register("phoneNumber", { required: "Phone number is required", minLength: { value: 7, message: "Enter a valid phone number" } })} />
                   <TextField label={<span>Email <span className="muted-text">(optional)</span></span>} type="email" span="half" error={errors.email} registerProps={register("email", { pattern: { value: /^\S+@\S+$/i, message: "Enter a valid email" } })} />
                   <Field label="Address" error={errors.address} span="full"><textarea className={`form-control ${errors.address ? "is-invalid" : ""}`} rows={2} {...register("address", { required: "Address is required" })} /></Field>
-                  <Field label="Upload Passport Photo (3x4)" error={errors.passportPhoto} span="half"><input className={`form-control ${errors.passportPhoto ? "is-invalid" : ""}`} type="file" accept="image/png,image/jpeg,image/webp" {...register("passportPhoto", { validate: validateUpload })} /></Field>
+                  <Field label={<span>Upload Passport Photo (3x4) <span className="muted-text">(optional)</span></span>} error={errors.passportPhoto} span="half"><input className={`form-control ${errors.passportPhoto ? "is-invalid" : ""}`} type="file" accept="image/png,image/jpeg,image/webp" {...register("passportPhoto", { validate: validateOptionalUpload })} /></Field>
                   <Field label="Upload FAYADA DIGITAL ID" error={errors.fayadaDigitalId} span="half"><input className={`form-control ${errors.fayadaDigitalId ? "is-invalid" : ""}`} type="file" accept="image/png,image/jpeg,image/webp" {...register("fayadaDigitalId", { validate: validateUpload })} /></Field>
                 </div>
               )}
@@ -466,3 +473,4 @@ export default function ApplicationRegistration() {
     </main>
   );
 }
+

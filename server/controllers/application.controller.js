@@ -132,11 +132,6 @@ export async function createApplication(req, res, next) {
     const fayadaDigitalId = req.files?.fayadaDigitalId?.[0];
     const paymentScreenshot = req.files?.paymentScreenshot?.[0];
 
-    if (!passportPhoto) {
-      const error = new Error("Passport photo is required");
-      error.statusCode = 400;
-      throw error;
-    }
 
     if (!fayadaDigitalId) {
       const error = new Error("FAYADA DIGITAL ID image is required");
@@ -150,7 +145,7 @@ export async function createApplication(req, res, next) {
       throw error;
     }
 
-    assertCompressedUpload(passportPhoto);
+    if (passportPhoto) assertCompressedUpload(passportPhoto);
     assertCompressedUpload(fayadaDigitalId);
     assertCompressedUpload(paymentScreenshot);
 
@@ -182,7 +177,7 @@ export async function createApplication(req, res, next) {
       paymentInformation: {
         bankName: parsed.paymentBank
       },
-      passportPhoto: buildUploadDocument(passportPhoto),
+      passportPhoto: passportPhoto ? buildUploadDocument(passportPhoto) : undefined,
       fayadaDigitalId: buildUploadDocument(fayadaDigitalId),
       paymentScreenshot: buildUploadDocument(paymentScreenshot),
       agreementAccepted: parsed.agreementAccepted,
@@ -194,7 +189,7 @@ export async function createApplication(req, res, next) {
       applicationNumber: application.applicationNumber,
       submittedAt: application.submittedAt,
       uploads: {
-        passportPhoto: uploadPath(application.passportPhoto.filename),
+        passportPhoto: application.passportPhoto?.filename ? uploadPath(application.passportPhoto.filename) : null,
         fayadaDigitalId: uploadPath(application.fayadaDigitalId.filename),
         paymentScreenshot: uploadPath(application.paymentScreenshot.filename),
         storage: "mongodb"
@@ -286,3 +281,4 @@ export async function serveApplicationUpload(req, res, next) {
     return next(error);
   }
 }
+
