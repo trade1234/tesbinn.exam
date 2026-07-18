@@ -22,6 +22,20 @@ export default function ExamScreen() {
   const [answers, setAnswers] = useState(() => {
     const map = {};
     initial?.answers?.forEach((answer) => { map[answer.questionId] = answer; });
+    if (initial?.attempt?._id) {
+      try {
+        const cached = JSON.parse(localStorage.getItem(`exam_answers_${initial.attempt._id}`) || "null");
+        if (cached?.startedAt === initial.attempt.startedAt) {
+          cached?.answers?.forEach((answer) => {
+            if (answer?.questionId) map[answer.questionId] = answer;
+          });
+        } else if (cached) {
+          localStorage.removeItem(`exam_answers_${initial.attempt._id}`);
+        }
+      } catch (_error) {
+        localStorage.removeItem(`exam_answers_${initial.attempt._id}`);
+      }
+    }
     return map;
   });
   const extraMinutes = initial?.exam?.extraTimeMinutes || 0;
@@ -75,11 +89,12 @@ export default function ExamScreen() {
 
   useEffect(() => {
     if (!bundle?.attempt?._id) return undefined;
+    localStorage.setItem(`exam_answers_${bundle.attempt._id}`, JSON.stringify({ startedAt: bundle.attempt.startedAt, answers: answerPayload() }));
     setSaveStatus("pending");
     window.clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = window.setTimeout(save, 1200);
     return () => window.clearTimeout(saveTimeoutRef.current);
-  }, [answers, bundle?.attempt?._id, save]);
+  }, [answerPayload, answers, bundle?.attempt?._id, save]);
 
   useEffect(() => {
     const interval = setInterval(save, 10000);
@@ -91,7 +106,7 @@ export default function ExamScreen() {
       if (!bundle?.attempt?._id) return;
       const body = JSON.stringify({ answers: answerPayload() });
       const token = localStorage.getItem("exam_token");
-      localStorage.setItem(`exam_answers_${bundle.attempt._id}`, body);
+      localStorage.setItem(`exam_answers_${bundle.attempt._id}`, JSON.stringify({ startedAt: bundle.attempt.startedAt, answers: answerPayload() }));
       fetch(`${api.defaults.baseURL}/exams/attempts/${bundle.attempt._id}/answers`, {
         method: "PUT",
         headers: {
@@ -107,7 +122,7 @@ export default function ExamScreen() {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {})
         },
-        body: "{}",
+        body,
         keepalive: true
       }).catch(() => {});
     };
@@ -139,7 +154,7 @@ export default function ExamScreen() {
     const disqualify = async () => {
       if (!bundle?.attempt?._id) return;
       try {
-        const { data } = await api.post(`/exams/attempts/${bundle.attempt._id}/violation`);
+        const { data } = await api.post(`/exams/attempts/${bundle.attempt._id}/violation`, { answers: answerPayload() });
         if (data.attempt?.status === "DISQUALIFIED") {
           sessionStorage.removeItem("active_exam");
           navigate("/student/results", { replace: true, state: { message: "Your exam was disqualified because you remained outside the live exam for 3 seconds. An admin must grant a retake." } });
@@ -193,7 +208,7 @@ export default function ExamScreen() {
       window.clearTimeout(leaveTimerRef.current);
       window.clearInterval(countdownTimerRef.current);
     };
-  }, [bundle?.attempt?._id, isPaused, navigate, save]);
+  }, [answerPayload, bundle?.attempt?._id, isPaused, navigate, save]);
 
   useEffect(() => {
     if (!bundle?.exam?._id) return undefined;
@@ -234,6 +249,7 @@ export default function ExamScreen() {
     try {
       await save();
       await api.post("/exams/submit", { attemptId: bundle.attempt?._id });
+      localStorage.removeItem(`exam_answers_${bundle.attempt?._id}`);
       sessionStorage.removeItem("active_exam");
       navigate("/student/results");
     } finally {

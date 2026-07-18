@@ -203,6 +203,15 @@ export async function recordViolation(req, res, next) {
     if (!exam || exam.isPaused || now < exam.startDate || !effectiveEnd || now > effectiveEnd) {
       return res.status(409).json({ message: "The exam is not currently live" });
     }
+    const answers = Array.isArray(req.body?.answers) ? req.body.answers : [];
+    const operations = answers.filter((answer) => answer?.questionId).map((answer) => ({
+      updateOne: {
+        filter: { attemptId: attempt._id, questionId: answer.questionId },
+        update: { $set: { selectedAnswer: answer.selectedAnswer || "", markedForReview: Boolean(answer.markedForReview) } },
+        upsert: true
+      }
+    }));
+    if (operations.length) await Answer.bulkWrite(operations);
     attempt.violationCount = 3;
     attempt.status = "DISQUALIFIED";
     attempt.score = 0;
