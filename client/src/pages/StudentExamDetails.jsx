@@ -129,7 +129,7 @@ export default function StudentExamDetails() {
                 <div className="mt-5 grid gap-4 md:grid-cols-2">
                   {[
                     "Cheating, copying, screenshots, outside help, or using unauthorized materials is not allowed.",
-                    "Leaving this exam page is recorded. On the third violation, the exam ends immediately and only an admin can grant a retake.",
+                    "Leaving or minimizing this live exam starts a 3-second countdown. Remaining away for 3 seconds disqualifies the attempt immediately.",
                     "The timer begins when you click Start Exam and continues until the duration or admin end time is reached.",
                     "Answers are auto-saved, but you should still submit before the timer ends.",
                     "Use Clear Choice if you want to remove an answer and select another option.",
@@ -157,7 +157,7 @@ export default function StudentExamDetails() {
               {error && <div className="mt-5 rounded-xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{error}</div>}
               <label className="mt-5 flex cursor-pointer items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
                 <input className="mt-1 h-5 w-5 shrink-0 accent-red-600" type="checkbox" checked={policyAccepted} onChange={(event) => setPolicyAccepted(event.target.checked)} />
-                <span>I understand that AI tools, outside help, screenshots, copy/paste, switching tabs, minimizing, refreshing, and leaving the exam page are prohibited. Three page-leave violations end my exam.</span>
+                <span>I understand that AI tools, outside help, screenshots, copy/paste, switching tabs, minimizing, refreshing, and leaving the exam page are prohibited. Staying outside the live exam for 3 seconds disqualifies me.</span>
               </label>
               <button className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#1e9bf0] px-5 py-4 text-base font-semibold text-white transition hover:bg-[#0f88d2] disabled:cursor-not-allowed disabled:bg-slate-300" onClick={startExam} disabled={loading || !isExamOpen || !policyAccepted}>
                 <PlayCircle size={20} /> {loading ? "Starting..." : isExamOpen ? "Start Exam" : exam.isPaused ? "Exam paused" : isBeforeStart ? "Waiting for start time" : "Exam ended"}

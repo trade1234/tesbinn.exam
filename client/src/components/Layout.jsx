@@ -1,4 +1,4 @@
-import { AlertCircle, Bell, BookOpen, ChevronDown, ClipboardList, Clock3, FileBarChart, FileCheck2, Home, LogOut, Moon, Radio, Search, Settings, Sun, UserRound, Users } from "lucide-react";
+import { AlertCircle, Bell, BookOpen, ChevronDown, ClipboardList, Clock3, FileBarChart, FileCheck2, Home, LogOut, Moon, Radio, RotateCcw, Search, Settings, Sun, UserRound, Users } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -138,6 +138,7 @@ export default function Layout({ role }) {
     { to: "/admin/students", label: "Students", icon: Users },
     { to: "/admin/applications", label: "Applications", icon: FileCheck2 },
     { to: "/admin/results", label: "Results", icon: FileBarChart },
+    { to: "/admin/retakes", label: "Retake Users", icon: RotateCcw },
     { to: "/admin/monitor", label: "Live Monitor", icon: Radio }
   ];
   const studentLinks = [

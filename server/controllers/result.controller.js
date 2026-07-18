@@ -112,6 +112,18 @@ export async function listActiveAttempts(req, res, next) {
   }
 }
 
+export async function listDisqualifiedAttempts(req, res, next) {
+  try {
+    const attempts = await ExamAttempt.find({ status: "DISQUALIFIED" })
+      .populate("studentId", "name email enrollmentNumber")
+      .populate({ path: "examId", populate: { path: "courseId" } })
+      .sort({ submittedAt: -1 });
+    res.json(attempts);
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function analytics(req, res, next) {
   try {
     await finalizeExpiredAttempts();

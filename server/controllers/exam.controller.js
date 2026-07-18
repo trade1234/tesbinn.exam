@@ -195,22 +195,23 @@ export async function saveAnswers(req, res, next) {
 
 export async function recordViolation(req, res, next) {
   try {
-    const attempt = await ExamAttempt.findOneAndUpdate(
-      { _id: req.params.attemptId, studentId: req.user._id, status: "IN_PROGRESS" },
-      { $inc: { violationCount: 1 } },
-      { new: true }
-    );
+    const attempt = await ExamAttempt.findOne({ _id: req.params.attemptId, studentId: req.user._id, status: "IN_PROGRESS" });
     if (!attempt) return res.status(404).json({ message: "Active attempt not found" });
-    if (attempt.violationCount >= 3) {
-      attempt.status = "DISQUALIFIED";
-      attempt.score = 0;
-      attempt.percentage = 0;
-      attempt.submittedAt = new Date();
-      attempt.terminationReason = "Exam page was left three times";
-      await attempt.save();
-      await logActivity(req, "EXAM_DISQUALIFIED", `Exam attempt disqualified after ${attempt.violationCount} page-leave violations`);
+    const exam = await Exam.findById(attempt.examId);
+    const now = new Date();
+    const effectiveEnd = attempt.retakeExpiresAt || exam?.endDate;
+    if (!exam || exam.isPaused || now < exam.startDate || !effectiveEnd || now > effectiveEnd) {
+      return res.status(409).json({ message: "The exam is not currently live" });
     }
-    res.json({ attempt, remainingWarnings: Math.max(3 - attempt.violationCount, 0) });
+    attempt.violationCount = 3;
+    attempt.status = "DISQUALIFIED";
+    attempt.score = 0;
+    attempt.percentage = 0;
+    attempt.submittedAt = now;
+    attempt.terminationReason = "Student remained outside the live exam for 3 seconds";
+    await attempt.save();
+    await logActivity(req, "EXAM_DISQUALIFIED", "Exam attempt disqualified after the student remained outside the live exam for 3 seconds");
+    res.json({ attempt });
   } catch (error) { next(error); }
 }
 

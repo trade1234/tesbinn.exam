@@ -14,9 +14,11 @@ export default function ExamScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [saveStatus, setSaveStatus] = useState("saved");
   const [securityNotice, setSecurityNotice] = useState("");
-  const [violationCount, setViolationCount] = useState(initial?.attempt?.violationCount || 0);
+  const [leaveCountdown, setLeaveCountdown] = useState(null);
   const saveTimeoutRef = useRef(null);
   const leaveRecordedRef = useRef(false);
+  const leaveTimerRef = useRef(null);
+  const countdownTimerRef = useRef(null);
   const [answers, setAnswers] = useState(() => {
     const map = {};
     initial?.answers?.forEach((answer) => { map[answer.questionId] = answer; });
@@ -99,6 +101,15 @@ export default function ExamScreen() {
         body,
         keepalive: true
       }).catch(() => {});
+      fetch(`${api.defaults.baseURL}/exams/attempts/${bundle.attempt._id}/violation`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: "{}",
+        keepalive: true
+      }).catch(() => {});
     };
     window.addEventListener("beforeunload", flushBeforeUnload);
     return () => window.removeEventListener("beforeunload", flushBeforeUnload);
@@ -125,30 +136,42 @@ export default function ExamScreen() {
     };
     const handleClipboard = (event) => blockEvent(event, "Copy and paste are disabled during the exam.");
     const handleContextMenu = (event) => blockEvent(event, "Right click is disabled during the exam.");
-    const recordPageLeave = async () => {
-      if (leaveRecordedRef.current || !bundle?.attempt?._id) return;
-      leaveRecordedRef.current = true;
-      save();
+    const disqualify = async () => {
+      if (!bundle?.attempt?._id) return;
       try {
         const { data } = await api.post(`/exams/attempts/${bundle.attempt._id}/violation`);
-        const count = data.attempt?.violationCount || 0;
-        setViolationCount(count);
         if (data.attempt?.status === "DISQUALIFIED") {
           sessionStorage.removeItem("active_exam");
-          navigate("/student/results", { replace: true, state: { message: "Your exam was ended after leaving the exam page three times. An admin must grant a retake." } });
-        } else {
-          showBlockedNotice(`Warning ${count} of 3: leaving the exam page is prohibited. ${data.remainingWarnings} warning(s) remain.`);
+          navigate("/student/results", { replace: true, state: { message: "Your exam was disqualified because you remained outside the live exam for 3 seconds. An admin must grant a retake." } });
         }
       } catch (error) {
-        console.error("Failed to record exam security violation", error);
+        console.error("Failed to disqualify exam attempt", error);
       }
+    };
+    const recordPageLeave = () => {
+      if (leaveRecordedRef.current || !bundle?.attempt?._id || isPaused) return;
+      leaveRecordedRef.current = true;
+      save();
+      setLeaveCountdown(3);
+      let seconds = 3;
+      countdownTimerRef.current = window.setInterval(() => {
+        seconds -= 1;
+        setLeaveCountdown(Math.max(seconds, 0));
+      }, 1000);
+      leaveTimerRef.current = window.setTimeout(disqualify, 3000);
+    };
+    const cancelPageLeave = () => {
+      window.clearTimeout(leaveTimerRef.current);
+      window.clearInterval(countdownTimerRef.current);
+      leaveRecordedRef.current = false;
+      setLeaveCountdown(null);
     };
     const handleVisibility = () => {
       if (document.hidden) recordPageLeave();
-      else leaveRecordedRef.current = false;
+      else cancelPageLeave();
     };
     const handleBlur = () => recordPageLeave();
-    const handleFocus = () => { if (!document.hidden) leaveRecordedRef.current = false; };
+    const handleFocus = () => { if (!document.hidden) cancelPageLeave(); };
 
     document.addEventListener("keydown", handleKeyDown, true);
     document.addEventListener("copy", handleClipboard, true);
@@ -167,8 +190,10 @@ export default function ExamScreen() {
       document.removeEventListener("visibilitychange", handleVisibility);
       window.removeEventListener("blur", handleBlur);
       window.removeEventListener("focus", handleFocus);
+      window.clearTimeout(leaveTimerRef.current);
+      window.clearInterval(countdownTimerRef.current);
     };
-  }, [bundle?.attempt?._id, navigate, save]);
+  }, [bundle?.attempt?._id, isPaused, navigate, save]);
 
   useEffect(() => {
     if (!bundle?.exam?._id) return undefined;
@@ -252,7 +277,7 @@ export default function ExamScreen() {
             <div className={`rounded-lg px-3 py-1.5 text-xs font-bold ${saveStatus === "error" ? "bg-red-50 text-red-700" : saveStatus === "saved" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
               {saveStatus === "error" ? "Autosave failed" : saveStatus === "saved" ? "Autosaved" : "Saving..."}
             </div>
-            <div className={`rounded-lg px-3 py-1.5 text-xs font-bold ${violationCount ? "bg-red-50 text-red-700" : "bg-slate-100 text-slate-600"}`}>Page-leave warnings: {violationCount}/3</div>
+            <div className={`rounded-lg px-3 py-1.5 text-xs font-bold ${leaveCountdown !== null ? "bg-red-100 text-red-700" : "bg-slate-100 text-slate-600"}`}>{leaveCountdown !== null ? `Disqualification in ${leaveCountdown}s` : "3-second leave protection active"}</div>
             {extraMinutes > 0 && (
               <span className="rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-bold text-white animate-pulse">
                 +{extraMinutes} Min Extra Time
@@ -276,6 +301,11 @@ export default function ExamScreen() {
       {securityNotice && (
         <div className="fixed left-1/2 top-20 z-50 w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800 shadow-lg">
           {securityNotice}
+        </div>
+      )}
+      {leaveCountdown !== null && (
+        <div className="fixed inset-x-0 top-0 z-[60] bg-red-600 px-4 py-3 text-center text-sm font-bold text-white shadow-lg">
+          Return to the exam immediately — disqualification in {leaveCountdown} second{leaveCountdown === 1 ? "" : "s"}.
         </div>
       )}
       <main className="mx-auto grid max-w-7xl gap-3 p-3 sm:gap-4 sm:p-4 lg:grid-cols-[240px_minmax(0,1fr)] xl:grid-cols-[260px_minmax(0,1fr)]">

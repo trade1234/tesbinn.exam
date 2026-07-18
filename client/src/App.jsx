@@ -16,6 +16,7 @@ import StudentExamDetails from "./pages/StudentExamDetails.jsx";
 import ExamScreen from "./pages/ExamScreen.jsx";
 import Profile from "./pages/Profile.jsx";
 import ApplicationRegistration from "./pages/ApplicationRegistration.jsx";
+import RetakeUsers from "./pages/RetakeUsers.jsx";
 
 export default function App() {
   return (
@@ -31,6 +32,7 @@ export default function App() {
           <Route path="/admin/students" element={<Students />} />
           <Route path="/admin/applications" element={<Applications />} />
           <Route path="/admin/results" element={<Results />} />
+          <Route path="/admin/retakes" element={<RetakeUsers />} />
           <Route path="/admin/monitor" element={<LiveMonitor />} />
         </Route>
       </Route>
