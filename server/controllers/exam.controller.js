@@ -67,10 +67,17 @@ export async function listExams(req, res, next) {
     if (req.user.role === "STUDENT" && exams.length) {
       const attempts = await ExamAttempt.find({ studentId: req.user._id, examId: { $in: exams.map((exam) => exam._id) } }).select("examId status retakeExpiresAt violationCount");
       const attemptMap = new Map(attempts.map((attempt) => [String(attempt.examId), attempt]));
-      return res.json(exams.map((exam) => ({
-        ...exam.toObject(),
-        studentAttempt: attemptMap.get(String(exam._id)) || null
-      })));
+      const serverNow = Date.now();
+      return res.json(exams.map((exam) => {
+        const studentAttempt = attemptMap.get(String(exam._id)) || null;
+        const effectiveEnd = studentAttempt?.retakeExpiresAt || exam.endDate;
+        const referenceTime = exam.isPaused && exam.pausedAt ? new Date(exam.pausedAt).getTime() : serverNow;
+        return {
+          ...exam.toObject(),
+          studentAttempt,
+          serverRemainingSeconds: Math.max(Math.floor((new Date(effectiveEnd).getTime() - referenceTime) / 1000), 0)
+        };
+      }));
     }
     res.json(exams);
   } catch (error) {
@@ -140,10 +147,15 @@ export async function startExam(req, res, next) {
       await attempt.save();
     } else if (attempt && attempt.status !== "IN_PROGRESS") {
       return res.status(409).json({ message: "You have already taken this exam. Only one attempt is allowed." });
+    } else if (attempt && !attempt.retakeExpiresAt) {
+      // Normal attempts always belong to the shared scheduled exam clock.
+      // A late login must never become a new personal start time.
+      attempt.startedAt = exam.startDate;
+      await attempt.save();
     }
     if (!attempt) {
       try {
-        attempt = await ExamAttempt.create({ examId: exam._id, studentId: req.user._id });
+        attempt = await ExamAttempt.create({ examId: exam._id, studentId: req.user._id, startedAt: exam.startDate });
       } catch (error) {
         if (error.code === 11000) {
           attempt = await ExamAttempt.findOne({ examId: exam._id, studentId: req.user._id });
@@ -161,7 +173,9 @@ export async function startExam(req, res, next) {
     
     await logActivity(req, "START_EXAM", `Started exam: "${exam.title}" for course "${exam.courseId?.courseName}"`);
     
-    res.status(201).json({ attempt, exam, questions, answers });
+    const effectiveEnd = attempt.retakeExpiresAt || exam.endDate;
+    const remainingSeconds = Math.max(Math.floor((new Date(effectiveEnd).getTime() - Date.now()) / 1000), 0);
+    res.status(201).json({ attempt, exam, questions, answers, timing: { serverNow: new Date(), effectiveEnd, remainingSeconds } });
   } catch (error) {
     next(error);
   }
