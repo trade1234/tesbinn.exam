@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "nodemon index.js",
     "start": "node index.js",
+    "test": "node tests/examTiming.test.js",
     "seed": "node seed.js",
     "import:coffee-exam": "node scripts/importCoffeeCuppingFinalExam.js"
   },

@@ -5,6 +5,7 @@ import { ExamAttempt } from "../models/ExamAttempt.js";
 import { Answer } from "../models/Answer.js";
 import { courseMatchesTraining, findAssignedCourseForStudent } from "../utils/courseAccess.js";
 import { logActivity } from "../utils/logger.js";
+import { scheduledExamEnd, scheduledRemainingSeconds } from "../utils/examTiming.js";
 
 function normalizeAnswer(value = "") {
   return String(value).trim().replace(/\s+/g, " ").toLowerCase();
@@ -70,12 +71,11 @@ export async function listExams(req, res, next) {
       const serverNow = Date.now();
       return res.json(exams.map((exam) => {
         const studentAttempt = attemptMap.get(String(exam._id)) || null;
-        const effectiveEnd = exam.endDate;
         const referenceTime = exam.isPaused && exam.pausedAt ? new Date(exam.pausedAt).getTime() : serverNow;
         return {
           ...exam.toObject(),
           studentAttempt,
-          serverRemainingSeconds: Math.max(Math.floor((new Date(effectiveEnd).getTime() - referenceTime) / 1000), 0)
+          serverRemainingSeconds: scheduledRemainingSeconds(exam, referenceTime)
         };
       }));
     }
@@ -171,8 +171,8 @@ export async function startExam(req, res, next) {
     
     await logActivity(req, "START_EXAM", `Started exam: "${exam.title}" for course "${exam.courseId?.courseName}"`);
     
-    const effectiveEnd = exam.endDate;
-    const remainingSeconds = Math.max(Math.floor((new Date(effectiveEnd).getTime() - Date.now()) / 1000), 0);
+    const effectiveEnd = scheduledExamEnd(exam);
+    const remainingSeconds = scheduledRemainingSeconds(exam);
     res.status(201).json({ attempt, exam, questions, answers, timing: { serverNow: new Date(), effectiveEnd, remainingSeconds } });
   } catch (error) {
     next(error);
@@ -211,7 +211,7 @@ export async function recordViolation(req, res, next) {
     if (!attempt) return res.status(404).json({ message: "Active attempt not found" });
     const exam = await Exam.findById(attempt.examId);
     const now = new Date();
-    const effectiveEnd = exam?.endDate;
+    const effectiveEnd = scheduledExamEnd(exam);
     if (!exam || exam.isPaused || now < exam.startDate || !effectiveEnd || now > effectiveEnd) {
       return res.status(409).json({ message: "The exam is not currently live" });
     }

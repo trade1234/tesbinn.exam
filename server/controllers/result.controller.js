@@ -6,6 +6,7 @@ import { Exam } from "../models/Exam.js";
 import { Question } from "../models/Question.js";
 import { User } from "../models/User.js";
 import { Course } from "../models/Course.js";
+import { scheduledExamEnd } from "../utils/examTiming.js";
 
 function normalizeAnswer(value = "") {
   return String(value).trim().replace(/\s+/g, " ").toLowerCase();
@@ -20,7 +21,7 @@ function isCorrectAnswer(question, selectedAnswer) {
 function attemptEndsAt(attempt) {
   const exam = attempt.examId;
   if (!exam || exam.isPaused) return null;
-  return new Date(exam.endDate);
+  return scheduledExamEnd(exam);
 }
 
 async function scoreAttempt(attempt, submittedAt = new Date()) {
