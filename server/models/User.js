@@ -8,7 +8,7 @@ const userSchema = new mongoose.Schema(
     enrollmentNumber: { type: String, trim: true, sparse: true, unique: true },
     batchYear: { type: Number, trim: true },
     trainingTaken: { type: String, trim: true, default: "" },
-    password: { type: String, required: true, minlength: 6, select: false },
+    password: { type: String, required: true, minlength: 5, select: false },
     generatedPassword: { type: String, select: false },
     role: { type: String, enum: ["ADMIN", "STUDENT"], default: "STUDENT" },
     isActive: { type: Boolean, default: true },

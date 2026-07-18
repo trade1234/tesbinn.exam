@@ -9,7 +9,17 @@ import { findAssignedCourseForStudent } from "../utils/courseAccess.js";
 import { logActivity } from "../utils/logger.js";
 
 function generateStudentPassword() {
-  return crypto.randomBytes(9).toString("base64url");
+  const upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+  const lower = "abcdefghijkmnopqrstuvwxyz";
+  const digits = "23456789";
+  const all = upper + lower + digits;
+  const pick = (chars) => chars[crypto.randomInt(chars.length)];
+  const characters = [pick(upper), pick(lower), pick(digits), pick(all), pick(all)];
+  for (let index = characters.length - 1; index > 0; index -= 1) {
+    const swapIndex = crypto.randomInt(index + 1);
+    [characters[index], characters[swapIndex]] = [characters[swapIndex], characters[index]];
+  }
+  return characters.join("");
 }
 
 async function uniqueStudentPassword(studentId) {
@@ -164,7 +174,7 @@ export async function studentDashboard(req, res, next) {
     const [courses, upcomingExams, recentResults] = await Promise.all([
       Course.find(courseQuery).limit(6).sort({ createdAt: -1 }),
       Exam.find(examQuery).populate("courseId").limit(6).sort({ startDate: 1 }),
-      ExamAttempt.find({ studentId: req.user._id, status: { $ne: "IN_PROGRESS" } })
+      ExamAttempt.find({ studentId: req.user._id, status: { $nin: ["IN_PROGRESS", "RETAKE_GRANTED"] } })
         .populate({ path: "examId", populate: { path: "courseId" } })
         .limit(5)
         .sort({ submittedAt: -1 })

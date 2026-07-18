@@ -14,7 +14,9 @@ export default function ExamScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [saveStatus, setSaveStatus] = useState("saved");
   const [securityNotice, setSecurityNotice] = useState("");
+  const [violationCount, setViolationCount] = useState(initial?.attempt?.violationCount || 0);
   const saveTimeoutRef = useRef(null);
+  const leaveRecordedRef = useRef(false);
   const [answers, setAnswers] = useState(() => {
     const map = {};
     initial?.answers?.forEach((answer) => { map[answer.questionId] = answer; });
@@ -26,7 +28,8 @@ export default function ExamScreen() {
     const now = initial.exam.isPaused && initial.exam.pausedAt ? new Date(initial.exam.pausedAt).getTime() : Date.now();
     const elapsed = Math.floor((now - new Date(initial.attempt.startedAt).getTime()) / 1000);
     const durationRemaining = ((initial.exam.durationMinutes || 0) + extraMinutes) * 60 - elapsed;
-    const endDateRemaining = Math.floor((new Date(initial.exam.endDate).getTime() - now) / 1000);
+    const attemptEnd = initial.attempt.retakeExpiresAt || initial.exam.endDate;
+    const endDateRemaining = Math.floor((new Date(attemptEnd).getTime() - now) / 1000);
     return Math.max(Math.min(durationRemaining, endDateRemaining), 0);
   });
 
@@ -122,9 +125,30 @@ export default function ExamScreen() {
     };
     const handleClipboard = (event) => blockEvent(event, "Copy and paste are disabled during the exam.");
     const handleContextMenu = (event) => blockEvent(event, "Right click is disabled during the exam.");
-    const handleVisibility = () => {
-      if (document.hidden) save();
+    const recordPageLeave = async () => {
+      if (leaveRecordedRef.current || !bundle?.attempt?._id) return;
+      leaveRecordedRef.current = true;
+      save();
+      try {
+        const { data } = await api.post(`/exams/attempts/${bundle.attempt._id}/violation`);
+        const count = data.attempt?.violationCount || 0;
+        setViolationCount(count);
+        if (data.attempt?.status === "DISQUALIFIED") {
+          sessionStorage.removeItem("active_exam");
+          navigate("/student/results", { replace: true, state: { message: "Your exam was ended after leaving the exam page three times. An admin must grant a retake." } });
+        } else {
+          showBlockedNotice(`Warning ${count} of 3: leaving the exam page is prohibited. ${data.remainingWarnings} warning(s) remain.`);
+        }
+      } catch (error) {
+        console.error("Failed to record exam security violation", error);
+      }
     };
+    const handleVisibility = () => {
+      if (document.hidden) recordPageLeave();
+      else leaveRecordedRef.current = false;
+    };
+    const handleBlur = () => recordPageLeave();
+    const handleFocus = () => { if (!document.hidden) leaveRecordedRef.current = false; };
 
     document.addEventListener("keydown", handleKeyDown, true);
     document.addEventListener("copy", handleClipboard, true);
@@ -132,6 +156,8 @@ export default function ExamScreen() {
     document.addEventListener("paste", handleClipboard, true);
     document.addEventListener("contextmenu", handleContextMenu, true);
     document.addEventListener("visibilitychange", handleVisibility);
+    window.addEventListener("blur", handleBlur);
+    window.addEventListener("focus", handleFocus);
     return () => {
       document.removeEventListener("keydown", handleKeyDown, true);
       document.removeEventListener("copy", handleClipboard, true);
@@ -139,8 +165,10 @@ export default function ExamScreen() {
       document.removeEventListener("paste", handleClipboard, true);
       document.removeEventListener("contextmenu", handleContextMenu, true);
       document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("blur", handleBlur);
+      window.removeEventListener("focus", handleFocus);
     };
-  }, [save]);
+  }, [bundle?.attempt?._id, navigate, save]);
 
   useEffect(() => {
     if (!bundle?.exam?._id) return undefined;
@@ -156,7 +184,8 @@ export default function ExamScreen() {
           const referenceTime = latestExam.isPaused && latestExam.pausedAt ? new Date(latestExam.pausedAt).getTime() : Date.now();
           const elapsed = Math.floor((referenceTime - new Date(bundle.attempt?.startedAt).getTime()) / 1000);
           const durationRemaining = ((latestExam.durationMinutes || 0) + (latestExam.extraTimeMinutes || 0)) * 60 - elapsed;
-          const endDateRemaining = Math.floor((new Date(latestExam.endDate).getTime() - referenceTime) / 1000);
+          const attemptEnd = bundle.attempt?.retakeExpiresAt || latestExam.endDate;
+          const endDateRemaining = Math.floor((new Date(attemptEnd).getTime() - referenceTime) / 1000);
           const refreshedRemaining = Math.max(Math.min(durationRemaining, endDateRemaining), 0);
           return refreshedRemaining > current ? refreshedRemaining : current;
         });
@@ -223,6 +252,7 @@ export default function ExamScreen() {
             <div className={`rounded-lg px-3 py-1.5 text-xs font-bold ${saveStatus === "error" ? "bg-red-50 text-red-700" : saveStatus === "saved" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
               {saveStatus === "error" ? "Autosave failed" : saveStatus === "saved" ? "Autosaved" : "Saving..."}
             </div>
+            <div className={`rounded-lg px-3 py-1.5 text-xs font-bold ${violationCount ? "bg-red-50 text-red-700" : "bg-slate-100 text-slate-600"}`}>Page-leave warnings: {violationCount}/3</div>
             {extraMinutes > 0 && (
               <span className="rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-bold text-white animate-pulse">
                 +{extraMinutes} Min Extra Time

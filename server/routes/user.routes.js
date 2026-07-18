@@ -31,6 +31,9 @@ router.patch("/students/:id/active", protect, authorize("ADMIN"), validate(z.obj
 router.get("/online", protect, authorize("ADMIN"), listOnlineStudents);
 router.get("/activity-logs", protect, authorize("ADMIN"), listActivityLogs);
 router.get("/dashboard/student", protect, authorize("STUDENT"), studentDashboard);
-router.patch("/change-password", protect, validate(z.object({ body: z.object({ currentPassword: z.string().min(1), newPassword: z.string().min(6) }) })), changePassword);
+router.patch("/change-password", protect, validate(z.object({ body: z.object({
+  currentPassword: z.string().min(1),
+  newPassword: z.string().length(5).regex(/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]+$/, "Password must be exactly 5 characters and contain letters and numbers")
+}) })), changePassword);
 
 export default router;

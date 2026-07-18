@@ -9,7 +9,7 @@ const router = Router();
 router.post("/register", validate(registerSchema), register);
 router.post("/login", validate(loginSchema), login);
 router.post("/forgot-password", validate(z.object({ body: z.object({ email: z.string().email() }) })), forgotPassword);
-router.post("/reset-password", validate(z.object({ body: z.object({ token: z.string().min(1), password: z.string().min(6) }) })), resetPassword);
+router.post("/reset-password", validate(z.object({ body: z.object({ token: z.string().min(1), password: z.string().length(5).regex(/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]+$/) }) })), resetPassword);
 router.get("/me", protect, me);
 
 export default router;

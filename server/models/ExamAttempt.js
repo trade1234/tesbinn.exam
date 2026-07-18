@@ -8,7 +8,12 @@ const examAttemptSchema = new mongoose.Schema(
     submittedAt: Date,
     score: { type: Number, default: 0 },
     percentage: { type: Number, default: 0 },
-    status: { type: String, enum: ["IN_PROGRESS", "PASS", "FAIL"], default: "IN_PROGRESS" }
+    status: { type: String, enum: ["IN_PROGRESS", "PASS", "FAIL", "DISQUALIFIED", "RETAKE_GRANTED"], default: "IN_PROGRESS" },
+    violationCount: { type: Number, default: 0, min: 0 },
+    terminationReason: { type: String, default: "" },
+    retakeGrantedAt: Date,
+    retakeExpiresAt: Date,
+    retakeGrantedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" }
   },
   { timestamps: true }
 );

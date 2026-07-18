@@ -81,7 +81,7 @@ export async function listResults(req, res, next) {
     if (courseExamIds) query.examId = req.query.examId ? query.examId : { $in: courseExamIds };
     applyDateRange(query, "submittedAt", { from: req.query.from, to: req.query.to });
 
-    const results = await ExamAttempt.find({ ...query, status: { $ne: "IN_PROGRESS" } })
+    const results = await ExamAttempt.find({ ...query, status: { $nin: ["IN_PROGRESS", "RETAKE_GRANTED"] } })
       .populate("studentId", "name email enrollmentNumber")
       .populate({ path: "examId", populate: { path: "courseId" } })
       .sort({ submittedAt: -1 });
@@ -151,7 +151,7 @@ export async function reviewResult(req, res, next) {
   try {
     await finalizeExpiredAttempts();
 
-    const query = { _id: req.params.attemptId, status: { $ne: "IN_PROGRESS" } };
+    const query = { _id: req.params.attemptId, status: { $nin: ["IN_PROGRESS", "RETAKE_GRANTED"] } };
     if (req.user.role === "STUDENT") query.studentId = req.user._id;
 
     const attempt = await ExamAttempt.findOne(query)
@@ -239,7 +239,7 @@ export async function exportExcel(_req, res, next) {
 }
 
 async function resultRows() {
-  const results = await ExamAttempt.find({ status: { $ne: "IN_PROGRESS" } })
+  const results = await ExamAttempt.find({ status: { $nin: ["IN_PROGRESS", "RETAKE_GRANTED"] } })
     .populate("studentId", "name enrollmentNumber")
     .populate({ path: "examId", populate: { path: "courseId" } });
   return results.map((result) => ({

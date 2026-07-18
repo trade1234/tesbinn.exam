@@ -16,6 +16,7 @@ export default function StudentExamDetails() {
   const [exams, setExams] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [policyAccepted, setPolicyAccepted] = useState(false);
   const [now, setNow] = useState(new Date());
   const exam = useMemo(() => exams.find((item) => item?._id === examId), [exams, examId]);
   const image = courseImages[Math.abs((examId || "").length) % courseImages.length];
@@ -40,18 +41,24 @@ export default function StudentExamDetails() {
   }
 
   const startDate = new Date(exam.startDate);
-  const endDate = new Date(exam.endDate);
+  const retakeGranted = exam.studentAttempt?.status === "RETAKE_GRANTED";
+  const retakeEndDate = exam.studentAttempt?.status === "IN_PROGRESS" && exam.studentAttempt?.retakeExpiresAt ? new Date(exam.studentAttempt.retakeExpiresAt) : null;
+  const endDate = retakeEndDate || new Date(exam.endDate);
   const extraTimeMinutes = exam.extraTimeMinutes || 0;
   const totalDuration = (exam.durationMinutes || 0) + extraTimeMinutes;
   const isBeforeStart = now < startDate;
   const isAfterEnd = now > endDate;
-  const isExamOpen = !isBeforeStart && !isAfterEnd && !exam.isPaused;
-  const availabilityMessage = exam.isPaused ? "This exam is paused by the administrator." : isBeforeStart ? `This exam starts at ${startDate.toLocaleString()}.` : isAfterEnd ? "This exam has ended." : "Exam is live.";
+  const isExamOpen = (retakeGranted || (!isBeforeStart && !isAfterEnd)) && !exam.isPaused;
+  const availabilityMessage = exam.isPaused ? "This exam is paused by the administrator." : retakeGranted ? "Admin retake granted. Your fresh timer starts when you press Start Exam." : retakeEndDate && !isAfterEnd ? `Admin retake in progress. Complete it before ${retakeEndDate.toLocaleString()}.` : isBeforeStart ? `This exam starts at ${startDate.toLocaleString()}.` : isAfterEnd ? "This exam has ended." : "Exam is live.";
 
   async function startExam() {
     setError("");
     if (!isExamOpen) {
       setError(availabilityMessage);
+      return;
+    }
+    if (!policyAccepted) {
+      setError("You must accept the anti-cheating rules before starting the exam.");
       return;
     }
 
@@ -122,7 +129,7 @@ export default function StudentExamDetails() {
                 <div className="mt-5 grid gap-4 md:grid-cols-2">
                   {[
                     "Cheating, copying, screenshots, outside help, or using unauthorized materials is not allowed.",
-                    "Opening another tab, refreshing, or closing the exam page may interrupt your attempt.",
+                    "Leaving this exam page is recorded. On the third violation, the exam ends immediately and only an admin can grant a retake.",
                     "The timer begins when you click Start Exam and continues until the duration or admin end time is reached.",
                     "Answers are auto-saved, but you should still submit before the timer ends.",
                     "Use Clear Choice if you want to remove an answer and select another option.",
@@ -148,7 +155,11 @@ export default function StudentExamDetails() {
                 <div className="rounded-xl bg-white p-3"><span className="flex items-center gap-2 text-slate-500"><FileText size={16} /> Ends</span><strong className="mt-1 block break-words">{endDate.toLocaleString()}</strong></div>
               </div>
               {error && <div className="mt-5 rounded-xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{error}</div>}
-              <button className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#1e9bf0] px-5 py-4 text-base font-semibold text-white transition hover:bg-[#0f88d2] disabled:cursor-not-allowed disabled:bg-slate-300" onClick={startExam} disabled={loading || !isExamOpen}>
+              <label className="mt-5 flex cursor-pointer items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
+                <input className="mt-1 h-5 w-5 shrink-0 accent-red-600" type="checkbox" checked={policyAccepted} onChange={(event) => setPolicyAccepted(event.target.checked)} />
+                <span>I understand that AI tools, outside help, screenshots, copy/paste, switching tabs, minimizing, refreshing, and leaving the exam page are prohibited. Three page-leave violations end my exam.</span>
+              </label>
+              <button className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#1e9bf0] px-5 py-4 text-base font-semibold text-white transition hover:bg-[#0f88d2] disabled:cursor-not-allowed disabled:bg-slate-300" onClick={startExam} disabled={loading || !isExamOpen || !policyAccepted}>
                 <PlayCircle size={20} /> {loading ? "Starting..." : isExamOpen ? "Start Exam" : exam.isPaused ? "Exam paused" : isBeforeStart ? "Waiting for start time" : "Exam ended"}
               </button>
             </aside>

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, Download, Eye, Filter, XCircle } from "lucide-react";
+import { CheckCircle2, Download, Eye, Filter, RotateCcw, XCircle } from "lucide-react";
 import DataTable from "../components/DataTable.jsx";
 import Modal from "../components/Modal.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -38,6 +38,7 @@ export default function Results() {
   const [review, setReview] = useState(null);
   const [reviewLoading, setReviewLoading] = useState(false);
   const [reviewError, setReviewError] = useState("");
+  const [retakingId, setRetakingId] = useState("");
   const query = useMemo(() => buildResultQuery(filters), [filters]);
 
   useEffect(() => {
@@ -77,6 +78,22 @@ export default function Results() {
       setReviewError(error.response?.data?.message || error.message || "Could not load answer sheet.");
     } finally {
       setReviewLoading(false);
+    }
+  }
+
+  async function grantRetake(row) {
+    if (!row?._id || !window.confirm(`Grant a fresh retake to ${row.studentId?.name || "this student"}? All previous answers will be deleted.`)) return;
+    setRetakingId(row._id);
+    try {
+      await api.post(`/exams/attempts/${row._id}/retake`);
+      setCompletedRows((current) => current.filter((item) => item._id !== row._id));
+      const { data } = await api.get(`/results/active${query}`);
+      setActiveRows(Array.isArray(data) ? data.filter(Boolean) : []);
+      setActiveTab("active");
+    } catch (error) {
+      window.alert(error.response?.data?.message || "Could not grant the retake.");
+    } finally {
+      setRetakingId("");
     }
   }
 
@@ -145,7 +162,12 @@ export default function Results() {
             <button className="btn-secondary" type="button" onClick={() => openReview(row)}>
               <Eye size={15} /> View Answers
             </button>
-          ) }
+          ) },
+          ...(isAdmin ? [{ key: "retake", label: "Retake", render: (row) => (
+            <button className="btn-secondary text-amber-700" type="button" disabled={retakingId === row._id} onClick={() => grantRetake(row)}>
+              <RotateCcw size={15} /> {retakingId === row._id ? "Resetting..." : "Grant Retake"}
+            </button>
+          ) }] : [])
         ]} rows={completedRows} />
       ) : (
         <DataTable columns={[

@@ -64,6 +64,14 @@ export async function listExams(req, res, next) {
     }
 
     const exams = await Exam.find(query).populate("courseId").sort({ startDate: 1 });
+    if (req.user.role === "STUDENT" && exams.length) {
+      const attempts = await ExamAttempt.find({ studentId: req.user._id, examId: { $in: exams.map((exam) => exam._id) } }).select("examId status retakeExpiresAt violationCount");
+      const attemptMap = new Map(attempts.map((attempt) => [String(attempt.examId), attempt]));
+      return res.json(exams.map((exam) => ({
+        ...exam.toObject(),
+        studentAttempt: attemptMap.get(String(exam._id)) || null
+      })));
+    }
     res.json(exams);
   } catch (error) {
     next(error);
@@ -108,22 +116,29 @@ export async function startExam(req, res, next) {
       return res.status(403).json({ message: "This exam is not assigned to your training course." });
     }
 
+    let attempt = await ExamAttempt.findOne({
+      examId: exam._id,
+      studentId: req.user._id
+    });
     const now = new Date();
-    if (now < exam.startDate) {
+    const hasGrantedRetake = attempt?.status === "RETAKE_GRANTED";
+    const hasActiveRetake = attempt?.status === "IN_PROGRESS" && attempt?.retakeExpiresAt && now <= attempt.retakeExpiresAt;
+    if (now < exam.startDate && !hasActiveRetake && !hasGrantedRetake) {
       return res.status(400).json({ message: `Exam has not started yet. It starts at ${exam.startDate.toLocaleString()}.` });
     }
-    if (now > exam.endDate) {
+    if (now > exam.endDate && !hasActiveRetake && !hasGrantedRetake) {
       return res.status(400).json({ message: "Exam has ended." });
     }
     if (exam.isPaused) {
       return res.status(400).json({ message: "Exam is paused by the administrator." });
     }
 
-    let attempt = await ExamAttempt.findOne({
-      examId: exam._id,
-      studentId: req.user._id
-    });
-    if (attempt && attempt.status !== "IN_PROGRESS") {
+    if (attempt?.status === "RETAKE_GRANTED") {
+      attempt.status = "IN_PROGRESS";
+      attempt.startedAt = now;
+      attempt.retakeExpiresAt = new Date(now.getTime() + ((Number(exam.durationMinutes) || 0) + (Number(exam.extraTimeMinutes) || 0)) * 60000);
+      await attempt.save();
+    } else if (attempt && attempt.status !== "IN_PROGRESS") {
       return res.status(409).json({ message: "You have already taken this exam. Only one attempt is allowed." });
     }
     if (!attempt) {
@@ -176,6 +191,50 @@ export async function saveAnswers(req, res, next) {
   } catch (error) {
     next(error);
   }
+}
+
+export async function recordViolation(req, res, next) {
+  try {
+    const attempt = await ExamAttempt.findOneAndUpdate(
+      { _id: req.params.attemptId, studentId: req.user._id, status: "IN_PROGRESS" },
+      { $inc: { violationCount: 1 } },
+      { new: true }
+    );
+    if (!attempt) return res.status(404).json({ message: "Active attempt not found" });
+    if (attempt.violationCount >= 3) {
+      attempt.status = "DISQUALIFIED";
+      attempt.score = 0;
+      attempt.percentage = 0;
+      attempt.submittedAt = new Date();
+      attempt.terminationReason = "Exam page was left three times";
+      await attempt.save();
+      await logActivity(req, "EXAM_DISQUALIFIED", `Exam attempt disqualified after ${attempt.violationCount} page-leave violations`);
+    }
+    res.json({ attempt, remainingWarnings: Math.max(3 - attempt.violationCount, 0) });
+  } catch (error) { next(error); }
+}
+
+export async function grantRetake(req, res, next) {
+  try {
+    const attempt = await ExamAttempt.findById(req.params.attemptId);
+    if (!attempt) return res.status(404).json({ message: "Exam attempt not found" });
+    const exam = await Exam.findById(attempt.examId);
+    if (!exam) return res.status(404).json({ message: "Exam not found" });
+    await Answer.deleteMany({ attemptId: attempt._id });
+    attempt.startedAt = undefined;
+    attempt.submittedAt = undefined;
+    attempt.score = 0;
+    attempt.percentage = 0;
+    attempt.status = "RETAKE_GRANTED";
+    attempt.violationCount = 0;
+    attempt.terminationReason = "";
+    attempt.retakeGrantedAt = new Date();
+    attempt.retakeExpiresAt = undefined;
+    attempt.retakeGrantedBy = req.user._id;
+    await attempt.save();
+    await logActivity(req, "GRANT_RETAKE", `Granted a fresh retake for attempt ${attempt._id}`);
+    res.json({ message: "Retake granted. Previous answers were cleared.", attempt });
+  } catch (error) { next(error); }
 }
 
 export async function submitExam(req, res, next) {

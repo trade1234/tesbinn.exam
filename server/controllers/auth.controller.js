@@ -9,7 +9,7 @@ export const registerSchema = z.object({
     name: z.string().min(2),
     email: z.string().email(),
     enrollmentNumber: z.string().optional(),
-    password: z.string().min(6),
+    password: z.string().length(5).regex(/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]+$/),
     role: z.enum(["ADMIN", "STUDENT"]).default("STUDENT")
   })
 });

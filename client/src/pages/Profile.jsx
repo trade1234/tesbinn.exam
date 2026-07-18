@@ -39,7 +39,8 @@ export default function Profile() {
         <h2 className="text-xl font-bold text-slate-950 dark:text-slate-100">Change Password</h2>
         <form className="mt-6 space-y-4" onSubmit={submit}>
           <input className="input" type="password" placeholder="Current password" value={form.currentPassword} onChange={(e) => setForm({ ...form, currentPassword: e.target.value })} required />
-          <input className="input" type="password" placeholder="New password" value={form.newPassword} onChange={(e) => setForm({ ...form, newPassword: e.target.value })} required />
+          <input className="input" type="password" placeholder="New 5-character password" minLength={5} maxLength={5} pattern="(?=.*[A-Za-z])(?=.*[0-9])[A-Za-z0-9]{5}" title="Exactly 5 letters and numbers, including at least one of each" value={form.newPassword} onChange={(e) => setForm({ ...form, newPassword: e.target.value })} required />
+          <p className="text-xs text-slate-500 dark:text-slate-400">Exactly 5 characters, using letters and numbers. Uppercase and lowercase are allowed.</p>
           {message && <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">{message}</p>}
           <button className="btn-primary w-full sm:w-auto">Update Password</button>
         </form>

@@ -2,7 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { authorize, protect } from "../middlewares/auth.js";
 import { validate } from "../middlewares/validate.js";
-import { createExam, deleteExam, examSchema, listExams, pauseExam, resumeExam, saveAnswers, startExam, submitExam, updateExam } from "../controllers/exam.controller.js";
+import { createExam, deleteExam, examSchema, grantRetake, listExams, pauseExam, recordViolation, resumeExam, saveAnswers, startExam, submitExam, updateExam } from "../controllers/exam.controller.js";
 
 const router = Router();
 
@@ -19,6 +19,8 @@ router.put("/attempts/:attemptId/answers", protect, authorize("STUDENT"), valida
   })
 })), saveAnswers);
 router.post("/submit", protect, authorize("STUDENT"), validate(z.object({ body: z.object({ attemptId: z.string().min(1) }) })), submitExam);
+router.post("/attempts/:attemptId/violation", protect, authorize("STUDENT"), recordViolation);
+router.post("/attempts/:attemptId/retake", protect, authorize("ADMIN"), grantRetake);
 router.put("/:id", protect, authorize("ADMIN"), validate(examSchema), updateExam);
 router.patch("/:id/pause", protect, authorize("ADMIN"), pauseExam);
 router.patch("/:id/resume", protect, authorize("ADMIN"), resumeExam);
