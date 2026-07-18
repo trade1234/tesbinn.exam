@@ -122,6 +122,21 @@ export async function listDisqualifiedAttempts(req, res, next) {
   }
 }
 
+export async function listDisqualificationHistory(req, res, next) {
+  try {
+    const attempts = await ExamAttempt.find({
+      $or: [{ wasDisqualified: true }, { status: "DISQUALIFIED" }]
+    })
+      .populate("studentId", "name email enrollmentNumber")
+      .populate({ path: "examId", populate: { path: "courseId" } })
+      .populate("retakeGrantedBy", "name email")
+      .sort({ lastDisqualifiedAt: -1, submittedAt: -1 });
+    res.json(attempts);
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function analytics(req, res, next) {
   try {
     await finalizeExpiredAttempts();

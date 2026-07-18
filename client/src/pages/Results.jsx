@@ -167,9 +167,9 @@ export default function Results() {
             </button>
           ) },
           ...(isAdmin ? [{ key: "retake", label: "Retake", render: (row) => (
-            <button className="btn-secondary text-amber-700" type="button" disabled={retakingId === row._id} onClick={() => setRetakeTarget(row)}>
+            row.status === "DISQUALIFIED" ? <button className="btn-secondary text-amber-700" type="button" disabled={retakingId === row._id} onClick={() => setRetakeTarget(row)}>
               <RotateCcw size={15} /> {retakingId === row._id ? "Resetting..." : "Grant Retake"}
-            </button>
+            </button> : <span className="text-xs text-slate-400">Not eligible</span>
           ) }] : [])
         ]} rows={completedRows} />
       ) : (

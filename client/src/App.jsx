@@ -17,6 +17,7 @@ import ExamScreen from "./pages/ExamScreen.jsx";
 import Profile from "./pages/Profile.jsx";
 import ApplicationRegistration from "./pages/ApplicationRegistration.jsx";
 import RetakeUsers from "./pages/RetakeUsers.jsx";
+import DisqualifiedStudents from "./pages/DisqualifiedStudents.jsx";
 
 export default function App() {
   return (
@@ -33,6 +34,7 @@ export default function App() {
           <Route path="/admin/applications" element={<Applications />} />
           <Route path="/admin/results" element={<Results />} />
           <Route path="/admin/retakes" element={<RetakeUsers />} />
+          <Route path="/admin/disqualified" element={<DisqualifiedStudents />} />
           <Route path="/admin/monitor" element={<LiveMonitor />} />
         </Route>
       </Route>

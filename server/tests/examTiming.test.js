@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { scheduledExamEnd, scheduledRemainingSeconds } from "../utils/examTiming.js";
+import { canGrantRetake } from "../utils/retakePolicy.js";
 
 test("approved retake receives only the shared scheduled remaining time", () => {
   const now = new Date("2026-07-18T08:30:00.000Z");
@@ -15,4 +16,12 @@ test("approved retake receives only the shared scheduled remaining time", () => 
 test("late or retake user receives zero time after the shared end", () => {
   const exam = { startDate: "2026-07-18T08:00:00.000Z", endDate: "2026-07-18T09:00:00.000Z" };
   assert.equal(scheduledRemainingSeconds(exam, new Date("2026-07-18T09:00:01.000Z")), 0);
+});
+
+test("retake approval is allowed only for a currently disqualified attempt", () => {
+  assert.equal(canGrantRetake({ status: "DISQUALIFIED" }), true);
+  assert.equal(canGrantRetake({ status: "FAIL" }), false);
+  assert.equal(canGrantRetake({ status: "PASS" }), false);
+  assert.equal(canGrantRetake({ status: "IN_PROGRESS" }), false);
+  assert.equal(canGrantRetake({ status: "RETAKE_GRANTED" }), false);
 });

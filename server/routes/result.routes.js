@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { analytics, exportExcel, exportPdf, listResults, listActiveAttempts, listDisqualifiedAttempts, reviewResult } from "../controllers/result.controller.js";
+import { analytics, exportExcel, exportPdf, listResults, listActiveAttempts, listDisqualifiedAttempts, listDisqualificationHistory, reviewResult } from "../controllers/result.controller.js";
 import { authorize, protect } from "../middlewares/auth.js";
 
 const router = Router();
@@ -7,6 +7,7 @@ const router = Router();
 router.get("/", protect, listResults);
 router.get("/active", protect, authorize("ADMIN"), listActiveAttempts);
 router.get("/disqualified", protect, authorize("ADMIN"), listDisqualifiedAttempts);
+router.get("/disqualification-history", protect, authorize("ADMIN"), listDisqualificationHistory);
 router.get("/analytics", protect, authorize("ADMIN"), analytics);
 router.get("/review/:attemptId", protect, reviewResult);
 router.get("/:attemptId/review", protect, reviewResult);

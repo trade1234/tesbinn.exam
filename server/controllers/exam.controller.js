@@ -6,6 +6,7 @@ import { Answer } from "../models/Answer.js";
 import { courseMatchesTraining, findAssignedCourseForStudent } from "../utils/courseAccess.js";
 import { logActivity } from "../utils/logger.js";
 import { scheduledExamEnd, scheduledRemainingSeconds } from "../utils/examTiming.js";
+import { canGrantRetake } from "../utils/retakePolicy.js";
 
 function normalizeAnswer(value = "") {
   return String(value).trim().replace(/\s+/g, " ").toLowerCase();
@@ -230,6 +231,10 @@ export async function recordViolation(req, res, next) {
     attempt.percentage = 0;
     attempt.submittedAt = now;
     attempt.terminationReason = "Student remained outside the live exam for 3 seconds";
+    attempt.wasDisqualified = true;
+    attempt.disqualificationCount = Number(attempt.disqualificationCount || 0) + 1;
+    attempt.lastDisqualifiedAt = now;
+    attempt.lastDisqualificationReason = attempt.terminationReason;
     await attempt.save();
     await logActivity(req, "EXAM_DISQUALIFIED", "Exam attempt disqualified after the student remained outside the live exam for 3 seconds");
     res.json({ attempt });
@@ -240,6 +245,7 @@ export async function grantRetake(req, res, next) {
   try {
     const attempt = await ExamAttempt.findById(req.params.attemptId);
     if (!attempt) return res.status(404).json({ message: "Exam attempt not found" });
+    if (!canGrantRetake(attempt)) return res.status(409).json({ message: "Retake permission is allowed only for a currently disqualified student" });
     const exam = await Exam.findById(attempt.examId);
     if (!exam) return res.status(404).json({ message: "Exam not found" });
     await Answer.deleteMany({ attemptId: attempt._id });
@@ -253,6 +259,7 @@ export async function grantRetake(req, res, next) {
     attempt.retakeGrantedAt = new Date();
     attempt.retakeExpiresAt = undefined;
     attempt.retakeGrantedBy = req.user._id;
+    attempt.wasDisqualified = true;
     await attempt.save();
     await logActivity(req, "GRANT_RETAKE", `Granted a fresh retake for attempt ${attempt._id}`);
     res.json({ message: "Retake granted. Previous answers were cleared.", attempt });
