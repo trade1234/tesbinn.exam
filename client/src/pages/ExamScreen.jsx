@@ -43,7 +43,7 @@ export default function ExamScreen() {
     if (!initial?.exam || !initial?.attempt) return 0;
     if (Number.isFinite(initial?.timing?.remainingSeconds)) return Math.max(initial.timing.remainingSeconds, 0);
     const now = initial.exam.isPaused && initial.exam.pausedAt ? new Date(initial.exam.pausedAt).getTime() : Date.now();
-    const attemptEnd = initial.attempt.retakeExpiresAt || initial.exam.endDate;
+    const attemptEnd = initial.exam.endDate;
     const endDateRemaining = Math.floor((new Date(attemptEnd).getTime() - now) / 1000);
     return Math.max(endDateRemaining, 0);
   });
@@ -236,7 +236,7 @@ export default function ExamScreen() {
         setRemaining((current) => {
           if (Number.isFinite(latestExam.serverRemainingSeconds)) return Math.max(latestExam.serverRemainingSeconds, 0);
           const referenceTime = latestExam.isPaused && latestExam.pausedAt ? new Date(latestExam.pausedAt).getTime() : Date.now();
-          const attemptEnd = bundle.attempt?.retakeExpiresAt || latestExam.endDate;
+          const attemptEnd = latestExam.endDate;
           const endDateRemaining = Math.floor((new Date(attemptEnd).getTime() - referenceTime) / 1000);
           const refreshedRemaining = Math.max(endDateRemaining, 0);
           return refreshedRemaining;

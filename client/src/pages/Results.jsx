@@ -244,8 +244,8 @@ export default function Results() {
             <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-900">
               <RotateCcw className="mt-0.5 shrink-0" size={22} />
               <div>
-                <p className="font-bold">Grant a fresh retake to {retakeTarget.studentId?.name || "this student"}?</p>
-                <p className="mt-1 text-sm leading-6">All previous answers, score, timer, and violations will be cleared. The student will restart from the beginning.</p>
+                <p className="font-bold">Grant a retake to {retakeTarget.studentId?.name || "this student"}?</p>
+                <p className="mt-1 text-sm leading-6">Previous answers, score, and violations will be cleared. The shared scheduled timer will continue, so only remaining time is available.</p>
               </div>
             </div>
             <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">

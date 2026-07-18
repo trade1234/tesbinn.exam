@@ -42,14 +42,13 @@ export default function StudentExamDetails() {
 
   const startDate = new Date(exam.startDate);
   const retakeGranted = exam.studentAttempt?.status === "RETAKE_GRANTED";
-  const retakeEndDate = exam.studentAttempt?.status === "IN_PROGRESS" && exam.studentAttempt?.retakeExpiresAt ? new Date(exam.studentAttempt.retakeExpiresAt) : null;
-  const endDate = retakeEndDate || new Date(exam.endDate);
+  const endDate = new Date(exam.endDate);
   const extraTimeMinutes = exam.extraTimeMinutes || 0;
   const totalDuration = (exam.durationMinutes || 0) + extraTimeMinutes;
   const isBeforeStart = now < startDate;
   const isAfterEnd = now > endDate;
-  const isExamOpen = (retakeGranted || (!isBeforeStart && !isAfterEnd)) && !exam.isPaused;
-  const availabilityMessage = exam.isPaused ? "This exam is paused by the administrator." : retakeGranted ? "Admin retake granted. Your fresh timer starts when you press Start Exam." : retakeEndDate && !isAfterEnd ? `Admin retake in progress. Complete it before ${retakeEndDate.toLocaleString()}.` : isBeforeStart ? `This exam starts at ${startDate.toLocaleString()}.` : isAfterEnd ? "This exam has ended." : "Exam is live.";
+  const isExamOpen = !isBeforeStart && !isAfterEnd && !exam.isPaused;
+  const availabilityMessage = exam.isPaused ? "This exam is paused by the administrator." : isBeforeStart ? `This exam starts at ${startDate.toLocaleString()}.` : isAfterEnd && retakeGranted ? "Retake permission is saved, but the shared exam has ended. Ask the admin to reschedule it." : isAfterEnd ? "This exam has ended." : retakeGranted ? "Admin retake granted. You will receive only the remaining shared exam time." : "Exam is live.";
 
   async function startExam() {
     setError("");

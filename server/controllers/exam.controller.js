@@ -65,12 +65,12 @@ export async function listExams(req, res, next) {
 
     const exams = await Exam.find(query).populate("courseId").sort({ startDate: 1 });
     if (req.user.role === "STUDENT" && exams.length) {
-      const attempts = await ExamAttempt.find({ studentId: req.user._id, examId: { $in: exams.map((exam) => exam._id) } }).select("examId status retakeExpiresAt violationCount");
+      const attempts = await ExamAttempt.find({ studentId: req.user._id, examId: { $in: exams.map((exam) => exam._id) } }).select("examId status violationCount");
       const attemptMap = new Map(attempts.map((attempt) => [String(attempt.examId), attempt]));
       const serverNow = Date.now();
       return res.json(exams.map((exam) => {
         const studentAttempt = attemptMap.get(String(exam._id)) || null;
-        const effectiveEnd = studentAttempt?.retakeExpiresAt || exam.endDate;
+        const effectiveEnd = exam.endDate;
         const referenceTime = exam.isPaused && exam.pausedAt ? new Date(exam.pausedAt).getTime() : serverNow;
         return {
           ...exam.toObject(),
@@ -128,12 +128,10 @@ export async function startExam(req, res, next) {
       studentId: req.user._id
     });
     const now = new Date();
-    const hasGrantedRetake = attempt?.status === "RETAKE_GRANTED";
-    const hasActiveRetake = attempt?.status === "IN_PROGRESS" && attempt?.retakeExpiresAt && now <= attempt.retakeExpiresAt;
-    if (now < exam.startDate && !hasActiveRetake && !hasGrantedRetake) {
+    if (now < exam.startDate) {
       return res.status(400).json({ message: `Exam has not started yet. It starts at ${exam.startDate.toLocaleString()}.` });
     }
-    if (now > exam.endDate && !hasActiveRetake && !hasGrantedRetake) {
+    if (now > exam.endDate) {
       return res.status(400).json({ message: "Exam has ended." });
     }
     if (exam.isPaused) {
@@ -142,12 +140,12 @@ export async function startExam(req, res, next) {
 
     if (attempt?.status === "RETAKE_GRANTED") {
       attempt.status = "IN_PROGRESS";
-      attempt.startedAt = now;
-      attempt.retakeExpiresAt = new Date(now.getTime() + ((Number(exam.durationMinutes) || 0) + (Number(exam.extraTimeMinutes) || 0)) * 60000);
+      attempt.startedAt = exam.startDate;
+      attempt.retakeExpiresAt = undefined;
       await attempt.save();
     } else if (attempt && attempt.status !== "IN_PROGRESS") {
       return res.status(409).json({ message: "You have already taken this exam. Only one attempt is allowed." });
-    } else if (attempt && !attempt.retakeExpiresAt) {
+    } else if (attempt) {
       // Normal attempts always belong to the shared scheduled exam clock.
       // A late login must never become a new personal start time.
       attempt.startedAt = exam.startDate;
@@ -173,7 +171,7 @@ export async function startExam(req, res, next) {
     
     await logActivity(req, "START_EXAM", `Started exam: "${exam.title}" for course "${exam.courseId?.courseName}"`);
     
-    const effectiveEnd = attempt.retakeExpiresAt || exam.endDate;
+    const effectiveEnd = exam.endDate;
     const remainingSeconds = Math.max(Math.floor((new Date(effectiveEnd).getTime() - Date.now()) / 1000), 0);
     res.status(201).json({ attempt, exam, questions, answers, timing: { serverNow: new Date(), effectiveEnd, remainingSeconds } });
   } catch (error) {
@@ -213,7 +211,7 @@ export async function recordViolation(req, res, next) {
     if (!attempt) return res.status(404).json({ message: "Active attempt not found" });
     const exam = await Exam.findById(attempt.examId);
     const now = new Date();
-    const effectiveEnd = attempt.retakeExpiresAt || exam?.endDate;
+    const effectiveEnd = exam?.endDate;
     if (!exam || exam.isPaused || now < exam.startDate || !effectiveEnd || now > effectiveEnd) {
       return res.status(409).json({ message: "The exam is not currently live" });
     }

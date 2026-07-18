@@ -20,7 +20,7 @@ function isCorrectAnswer(question, selectedAnswer) {
 function attemptEndsAt(attempt) {
   const exam = attempt.examId;
   if (!exam || exam.isPaused) return null;
-  return new Date(attempt.retakeExpiresAt || exam.endDate);
+  return new Date(exam.endDate);
 }
 
 async function scoreAttempt(attempt, submittedAt = new Date()) {

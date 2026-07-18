@@ -36,7 +36,7 @@ export default function RetakeUsers() {
     try {
       await api.post(`/exams/attempts/${row._id}/retake`);
       setRows((current) => current.filter((item) => item._id !== row._id));
-      setMessage(`Retake permission granted to ${studentName}. Their new timer starts when they open the exam.`);
+      setMessage(`Retake permission granted to ${studentName}. They will receive only the remaining scheduled exam time.`);
       setConfirmTarget(null);
     } catch (error) {
       setMessage(error.response?.data?.message || "Could not grant retake permission.");
@@ -66,7 +66,7 @@ export default function RetakeUsers() {
 
       <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
         <AlertTriangle className="mt-0.5 shrink-0" size={20} />
-        <p>Allowing a retake permanently clears the old answers, score, timer, and security violations. The student restarts with a completely new attempt state.</p>
+        <p>Allowing a retake clears the old answers, score, and security violations. It does not reset the shared exam clock; the student receives only the remaining time.</p>
       </div>
 
       {message && <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-800">{message}</div>}
@@ -79,7 +79,7 @@ export default function RetakeUsers() {
               <AlertTriangle className="mt-0.5 shrink-0" size={22} />
               <div>
                 <p className="font-bold">Allow {confirmTarget.studentId?.name || "this student"} to retake?</p>
-                <p className="mt-1 text-sm leading-6">The exam will restart from the beginning. Previous answers, score, timer, and security violations will be cleared.</p>
+                <p className="mt-1 text-sm leading-6">Previous answers, score, and security violations will be cleared. The scheduled timer will continue and will not restart.</p>
               </div>
             </div>
             <div className="rounded-xl bg-slate-50 p-4 text-sm dark:bg-slate-800">
