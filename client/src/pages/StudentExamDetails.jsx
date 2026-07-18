@@ -124,6 +124,26 @@ export default function StudentExamDetails() {
                 </div>
               </section>
 
+              <section className="overflow-hidden rounded-2xl border-2 border-red-300 bg-red-50 shadow-sm">
+                <div className="flex items-center gap-3 bg-red-600 px-5 py-4 text-white">
+                  <AlertTriangle size={26} />
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-widest text-red-100">Important — read carefully before starting</p>
+                    <h2 className="text-xl font-bold">Do not leave the exam screen</h2>
+                  </div>
+                </div>
+                <div className="space-y-3 p-5 text-sm leading-6 text-red-950">
+                  <p><strong>The system monitors the exam screen while your attempt is live.</strong></p>
+                  <ul className="list-disc space-y-2 pl-5">
+                    <li>Do not switch tabs, open another application, minimize the browser, or click outside the exam window.</li>
+                    <li>Leaving the exam starts a <strong>3-second countdown</strong>. Return before it reaches zero.</li>
+                    <li>If you remain outside for 3 seconds, your attempt is <strong>immediately disqualified</strong>.</li>
+                    <li>Refreshing or closing the exam page causes immediate disqualification.</li>
+                    <li>You cannot reopen a disqualified exam unless an administrator grants retake permission.</li>
+                  </ul>
+                </div>
+              </section>
+
               <section>
                 <h2 className="text-xl font-semibold text-slate-950 sm:text-2xl">Exam Policy</h2>
                 <div className="mt-5 grid gap-4 md:grid-cols-2">
@@ -157,8 +177,9 @@ export default function StudentExamDetails() {
               {error && <div className="mt-5 rounded-xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{error}</div>}
               <label className="mt-5 flex cursor-pointer items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
                 <input className="mt-1 h-5 w-5 shrink-0 accent-red-600" type="checkbox" checked={policyAccepted} onChange={(event) => setPolicyAccepted(event.target.checked)} />
-                <span>I understand that AI tools, outside help, screenshots, copy/paste, switching tabs, minimizing, refreshing, and leaving the exam page are prohibited. Staying outside the live exam for 3 seconds disqualifies me.</span>
+                <span><strong>I have carefully read and understood the exam security rules.</strong> I understand that switching tabs, minimizing, leaving the browser, or using another application for 3 seconds will disqualify my exam, and refreshing or closing it disqualifies immediately.</span>
               </label>
+              {!policyAccepted && <p className="mt-3 text-center text-xs font-bold text-red-600">You must check the confirmation box before you can start.</p>}
               <button className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#1e9bf0] px-5 py-4 text-base font-semibold text-white transition hover:bg-[#0f88d2] disabled:cursor-not-allowed disabled:bg-slate-300" onClick={startExam} disabled={loading || !isExamOpen || !policyAccepted}>
                 <PlayCircle size={20} /> {loading ? "Starting..." : isExamOpen ? "Start Exam" : exam.isPaused ? "Exam paused" : isBeforeStart ? "Waiting for start time" : "Exam ended"}
               </button>

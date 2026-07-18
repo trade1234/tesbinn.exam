@@ -55,7 +55,11 @@ const applicationSchema = new mongoose.Schema(
     },
     agreementAccepted: { type: Boolean, required: true },
     digitalSignature: { type: String, trim: true, default: "" },
-    submittedAt: { type: Date, default: Date.now }
+    submittedAt: { type: Date, default: Date.now },
+    status: { type: String, enum: ["PENDING", "APPROVED", "REJECTED"], default: "PENDING", index: true },
+    rejectionReason: { type: String, trim: true, maxlength: 500, default: "" },
+    rejectedAt: Date,
+    rejectedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" }
   },
   { timestamps: true }
 );

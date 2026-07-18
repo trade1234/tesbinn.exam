@@ -245,6 +245,26 @@ export async function deleteApplication(req, res, next) {
     next(error);
   }
 }
+
+export async function rejectApplication(req, res, next) {
+  try {
+    const application = await Application.findById(req.params.id);
+    if (!application) {
+      const error = new Error("Application not found");
+      error.statusCode = 404;
+      throw error;
+    }
+    application.status = "REJECTED";
+    application.rejectionReason = String(req.body.reason || "").trim();
+    application.rejectedAt = new Date();
+    application.rejectedBy = req.user._id;
+    await application.save();
+    const saved = await Application.findById(application._id).select("-passportPhoto.data -fayadaDigitalId.data -paymentScreenshot.data").lean();
+    res.json({ message: "Application rejected and student information preserved", application: applicationForResponse(saved) });
+  } catch (error) {
+    next(error);
+  }
+}
 export async function getApplicationByNumber(req, res, next) {
   try {
     const application = await Application.findOne({ applicationNumber: req.params.applicationNumber }).select("-passportPhoto.data -fayadaDigitalId.data -paymentScreenshot.data").lean();

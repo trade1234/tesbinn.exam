@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Eye, FileCheck2, GraduationCap, Printer, Search, Trash2, UserRound } from "lucide-react";
+import { Eye, FileCheck2, GraduationCap, Printer, Search, UserRound, XCircle } from "lucide-react";
 import DataTable from "../components/DataTable.jsx";
 import Modal from "../components/Modal.jsx";
 import { api, assetUrl } from "../services/api.js";
@@ -232,8 +232,9 @@ export default function Applications() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [selected, setSelected] = useState(null);
-  const [deleteTarget, setDeleteTarget] = useState(null);
-  const [deleting, setDeleting] = useState(false);
+  const [rejectTarget, setRejectTarget] = useState(null);
+  const [rejectReason, setRejectReason] = useState("");
+  const [rejecting, setRejecting] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -254,19 +255,20 @@ export default function Applications() {
       cancelled = true;
     };
   }, [search]);
-  async function confirmDelete() {
-    if (!deleteTarget?._id) return;
-    setDeleting(true);
+  async function confirmReject() {
+    if (!rejectTarget?._id) return;
+    setRejecting(true);
     setError("");
     try {
-      await api.delete(`/applications/${deleteTarget._id}`);
-      setRows((current) => current.filter((row) => row._id !== deleteTarget._id));
-      if (selected?._id === deleteTarget._id) setSelected(null);
-      setDeleteTarget(null);
+      const { data } = await api.patch(`/applications/${rejectTarget._id}/reject`, { reason: rejectReason });
+      setRows((current) => current.map((row) => row._id === rejectTarget._id ? data.application : row));
+      if (selected?._id === rejectTarget._id) setSelected(data.application);
+      setRejectTarget(null);
+      setRejectReason("");
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to delete application");
+      setError(err.response?.data?.message || "Failed to reject application");
     } finally {
-      setDeleting(false);
+      setRejecting(false);
     }
   }
 
@@ -311,6 +313,7 @@ export default function Applications() {
     { key: "trainingProgram", label: "Training Program", render: (row) => row.trainingInformation?.trainingProgram || "Not provided" },
     { key: "trainingType", label: "Training Type", render: (row) => row.trainingInformation?.trainingType || "Not provided" },
     { key: "submittedAt", label: "Submitted", render: (row) => formatDate(row.submittedAt || row.createdAt) },
+    { key: "status", label: "Status", render: (row) => <span className={`rounded-full px-3 py-1 text-xs font-bold ${row.status === "REJECTED" ? "bg-red-100 text-red-700" : row.status === "APPROVED" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>{row.status || "PENDING"}</span> },
     {
       key: "actions",
       label: "Actions",
@@ -322,8 +325,8 @@ export default function Applications() {
           <button className="btn-secondary" type="button" onClick={() => printApplication(row)}>
             <Printer size={14} /> Print
           </button>
-          <button className="btn-secondary border-red-200 text-red-700 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950/30" type="button" onClick={() => setDeleteTarget(row)}>
-            <Trash2 size={14} /> Delete
+          <button className="btn-secondary border-red-200 text-red-700 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950/30" type="button" disabled={row.status === "REJECTED"} onClick={() => { setRejectTarget(row); setRejectReason(""); }}>
+            <XCircle size={14} /> {row.status === "REJECTED" ? "Rejected" : "Reject"}
           </button>
         </div>
       )
@@ -372,16 +375,20 @@ export default function Applications() {
 
       <DataTable columns={columns} rows={filteredRows} empty="No assessment applications found" />
 
-      {deleteTarget && (
-        <Modal title="Delete Application" onClose={() => !deleting && setDeleteTarget(null)}>
+      {rejectTarget && (
+        <Modal title="Reject Application" onClose={() => !rejecting && setRejectTarget(null)}>
           <div className="space-y-4">
             <p className="text-sm leading-6 text-slate-600 dark:text-slate-300">
-              Delete application <strong className="text-slate-950 dark:text-slate-100">{deleteTarget.applicationNumber}</strong> for <strong className="text-slate-950 dark:text-slate-100">{fullName(deleteTarget.personalInformation)}</strong>? This removes the application and uploaded images from MongoDB.
+              Reject application <strong className="text-slate-950 dark:text-slate-100">{rejectTarget.applicationNumber}</strong> for <strong className="text-slate-950 dark:text-slate-100">{fullName(rejectTarget.personalInformation)}</strong>? The student information and every uploaded document will remain saved.
             </p>
+            <label className="block text-sm font-semibold text-slate-700 dark:text-slate-200">
+              <span className="mb-2 block">Reason for rejection (optional)</span>
+              <textarea className="input min-h-24" value={rejectReason} onChange={(event) => setRejectReason(event.target.value)} placeholder="Enter a reason for the record" maxLength={500} />
+            </label>
             <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-              <button className="btn-secondary" type="button" onClick={() => setDeleteTarget(null)} disabled={deleting}>Cancel</button>
-              <button className="inline-flex items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60" type="button" onClick={confirmDelete} disabled={deleting}>
-                <Trash2 size={16} /> {deleting ? "Deleting..." : "Delete"}
+              <button className="btn-secondary" type="button" onClick={() => setRejectTarget(null)} disabled={rejecting}>Cancel</button>
+              <button className="inline-flex items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60" type="button" onClick={confirmReject} disabled={rejecting}>
+                <XCircle size={16} /> {rejecting ? "Saving..." : "Reject and Save"}
               </button>
             </div>
           </div>
