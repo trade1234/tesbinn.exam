@@ -39,6 +39,7 @@ export default function Results() {
   const [reviewLoading, setReviewLoading] = useState(false);
   const [reviewError, setReviewError] = useState("");
   const [retakingId, setRetakingId] = useState("");
+  const [retakeTarget, setRetakeTarget] = useState(null);
   const query = useMemo(() => buildResultQuery(filters), [filters]);
 
   useEffect(() => {
@@ -81,8 +82,9 @@ export default function Results() {
     }
   }
 
-  async function grantRetake(row) {
-    if (!row?._id || !window.confirm(`Grant a fresh retake to ${row.studentId?.name || "this student"}? All previous answers will be deleted.`)) return;
+  async function grantRetake() {
+    const row = retakeTarget;
+    if (!row?._id) return;
     setRetakingId(row._id);
     try {
       await api.post(`/exams/attempts/${row._id}/retake`);
@@ -90,6 +92,7 @@ export default function Results() {
       const { data } = await api.get(`/results/active${query}`);
       setActiveRows(Array.isArray(data) ? data.filter(Boolean) : []);
       setActiveTab("active");
+      setRetakeTarget(null);
     } catch (error) {
       window.alert(error.response?.data?.message || "Could not grant the retake.");
     } finally {
@@ -164,7 +167,7 @@ export default function Results() {
             </button>
           ) },
           ...(isAdmin ? [{ key: "retake", label: "Retake", render: (row) => (
-            <button className="btn-secondary text-amber-700" type="button" disabled={retakingId === row._id} onClick={() => grantRetake(row)}>
+            <button className="btn-secondary text-amber-700" type="button" disabled={retakingId === row._id} onClick={() => setRetakeTarget(row)}>
               <RotateCcw size={15} /> {retakingId === row._id ? "Resetting..." : "Grant Retake"}
             </button>
           ) }] : [])
@@ -234,7 +237,25 @@ export default function Results() {
             </div>
           )}
         </Modal>
-      )}    </div>
+      )}
+      {retakeTarget && (
+        <Modal title="Confirm Retake Permission" widthClass="max-w-lg" onClose={() => !retakingId && setRetakeTarget(null)}>
+          <div className="space-y-5">
+            <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-900">
+              <RotateCcw className="mt-0.5 shrink-0" size={22} />
+              <div>
+                <p className="font-bold">Grant a fresh retake to {retakeTarget.studentId?.name || "this student"}?</p>
+                <p className="mt-1 text-sm leading-6">All previous answers, score, timer, and violations will be cleared. The student will restart from the beginning.</p>
+              </div>
+            </div>
+            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button className="btn-secondary" type="button" disabled={Boolean(retakingId)} onClick={() => setRetakeTarget(null)}>Cancel</button>
+              <button className="btn-primary" type="button" disabled={Boolean(retakingId)} onClick={grantRetake}><RotateCcw size={16} /> {retakingId ? "Granting..." : "Confirm Retake"}</button>
+            </div>
+          </div>
+        </Modal>
+      )}
+    </div>
   );
 }
 
