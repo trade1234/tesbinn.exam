@@ -42,11 +42,9 @@ export default function ExamScreen() {
   const [remaining, setRemaining] = useState(() => {
     if (!initial?.exam || !initial?.attempt) return 0;
     const now = initial.exam.isPaused && initial.exam.pausedAt ? new Date(initial.exam.pausedAt).getTime() : Date.now();
-    const elapsed = Math.floor((now - new Date(initial.attempt.startedAt).getTime()) / 1000);
-    const durationRemaining = ((initial.exam.durationMinutes || 0) + extraMinutes) * 60 - elapsed;
     const attemptEnd = initial.attempt.retakeExpiresAt || initial.exam.endDate;
     const endDateRemaining = Math.floor((new Date(attemptEnd).getTime() - now) / 1000);
-    return Math.max(Math.min(durationRemaining, endDateRemaining), 0);
+    return Math.max(endDateRemaining, 0);
   });
 
   const question = bundle?.questions?.[index];
@@ -236,12 +234,10 @@ export default function ExamScreen() {
         setBundle((current) => current ? { ...current, exam: latestExam } : current);
         setRemaining((current) => {
           const referenceTime = latestExam.isPaused && latestExam.pausedAt ? new Date(latestExam.pausedAt).getTime() : Date.now();
-          const elapsed = Math.floor((referenceTime - new Date(bundle.attempt?.startedAt).getTime()) / 1000);
-          const durationRemaining = ((latestExam.durationMinutes || 0) + (latestExam.extraTimeMinutes || 0)) * 60 - elapsed;
           const attemptEnd = bundle.attempt?.retakeExpiresAt || latestExam.endDate;
           const endDateRemaining = Math.floor((new Date(attemptEnd).getTime() - referenceTime) / 1000);
-          const refreshedRemaining = Math.max(Math.min(durationRemaining, endDateRemaining), 0);
-          return refreshedRemaining > current ? refreshedRemaining : current;
+          const refreshedRemaining = Math.max(endDateRemaining, 0);
+          return refreshedRemaining;
         });
       } catch (err) {
         console.error("Failed to refresh exam status", err);

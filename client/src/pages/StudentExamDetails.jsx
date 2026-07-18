@@ -150,6 +150,7 @@ export default function StudentExamDetails() {
                     "Cheating, copying, screenshots, outside help, or using unauthorized materials is not allowed.",
                     "Leaving or minimizing this live exam can disqualify the attempt immediately.",
                     "The timer begins when you click Start Exam and continues until the duration or admin end time is reached.",
+                    "All students share the scheduled end time. Starting late does not provide additional time.",
                     "Answers are auto-saved, but you should still submit before the timer ends.",
                     "Use Clear Choice if you want to remove an answer and select another option.",
                     "Final score is calculated immediately after submission based on the answer key."
