@@ -107,17 +107,9 @@ export default function ExamScreen() {
       const body = JSON.stringify({ answers: answerPayload() });
       const token = localStorage.getItem("exam_token");
       localStorage.setItem(`exam_answers_${bundle.attempt._id}`, JSON.stringify({ startedAt: bundle.attempt.startedAt, answers: answerPayload() }));
+      localStorage.setItem(`exam_leave_${bundle.attempt._id}`, String(Date.now()));
       fetch(`${api.defaults.baseURL}/exams/attempts/${bundle.attempt._id}/answers`, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        },
-        body,
-        keepalive: true
-      }).catch(() => {});
-      fetch(`${api.defaults.baseURL}/exams/attempts/${bundle.attempt._id}/violation`, {
-        method: "POST",
         headers: {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {})
@@ -156,6 +148,7 @@ export default function ExamScreen() {
       try {
         const { data } = await api.post(`/exams/attempts/${bundle.attempt._id}/violation`, { answers: answerPayload() });
         if (data.attempt?.status === "DISQUALIFIED") {
+          localStorage.removeItem(`exam_leave_${bundle.attempt._id}`);
           sessionStorage.removeItem("active_exam");
           navigate("/student/results", { replace: true, state: { message: "Your exam was disqualified because you remained outside the live exam for 3 seconds. An admin must grant a retake." } });
         }
@@ -163,30 +156,51 @@ export default function ExamScreen() {
         console.error("Failed to disqualify exam attempt", error);
       }
     };
-    const recordPageLeave = () => {
+    const startLeaveCountdown = (milliseconds = 3000) => {
       if (leaveRecordedRef.current || !bundle?.attempt?._id || isPaused) return;
       leaveRecordedRef.current = true;
       save();
-      setLeaveCountdown(3);
-      let seconds = 3;
+      let seconds = Math.max(Math.ceil(milliseconds / 1000), 1);
+      setLeaveCountdown(seconds);
       countdownTimerRef.current = window.setInterval(() => {
         seconds -= 1;
         setLeaveCountdown(Math.max(seconds, 0));
       }, 1000);
-      leaveTimerRef.current = window.setTimeout(disqualify, 3000);
+      leaveTimerRef.current = window.setTimeout(disqualify, milliseconds);
+    };
+    const recordPageLeave = () => {
+      if (!bundle?.attempt?._id || isPaused) return;
+      const leaveKey = `exam_leave_${bundle.attempt._id}`;
+      if (!localStorage.getItem(leaveKey)) localStorage.setItem(leaveKey, String(Date.now()));
+      startLeaveCountdown(3000);
     };
     const cancelPageLeave = () => {
       window.clearTimeout(leaveTimerRef.current);
       window.clearInterval(countdownTimerRef.current);
       leaveRecordedRef.current = false;
       setLeaveCountdown(null);
+      if (bundle?.attempt?._id) localStorage.removeItem(`exam_leave_${bundle.attempt._id}`);
+    };
+    const returnToExam = () => {
+      if (!bundle?.attempt?._id || document.hidden) return;
+      const startedAt = Number(localStorage.getItem(`exam_leave_${bundle.attempt._id}`));
+      if (startedAt && Date.now() - startedAt >= 3000) disqualify();
+      else cancelPageLeave();
     };
     const handleVisibility = () => {
       if (document.hidden) recordPageLeave();
-      else cancelPageLeave();
+      else returnToExam();
     };
     const handleBlur = () => recordPageLeave();
-    const handleFocus = () => { if (!document.hidden) cancelPageLeave(); };
+    const handleFocus = () => returnToExam();
+
+    const storedLeaveAt = Number(localStorage.getItem(`exam_leave_${bundle.attempt._id}`));
+    if (storedLeaveAt) {
+      const remainingMilliseconds = 3000 - (Date.now() - storedLeaveAt);
+      if (remainingMilliseconds <= 0) disqualify();
+      else if (document.hidden) startLeaveCountdown(remainingMilliseconds);
+      else cancelPageLeave();
+    }
 
     document.addEventListener("keydown", handleKeyDown, true);
     document.addEventListener("copy", handleClipboard, true);
@@ -250,6 +264,7 @@ export default function ExamScreen() {
       await save();
       await api.post("/exams/submit", { attemptId: bundle.attempt?._id });
       localStorage.removeItem(`exam_answers_${bundle.attempt?._id}`);
+      localStorage.removeItem(`exam_leave_${bundle.attempt?._id}`);
       sessionStorage.removeItem("active_exam");
       navigate("/student/results");
     } finally {
