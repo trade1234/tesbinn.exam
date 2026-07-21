@@ -180,7 +180,7 @@ export async function reviewResult(req, res, next) {
     if (req.user.role === "STUDENT") query.studentId = req.user._id;
 
     const attempt = await ExamAttempt.findOne(query)
-      .populate("studentId", "name email enrollmentNumber")
+      .populate("studentId", "name email enrollmentNumber trainingTaken")
       .populate({ path: "examId", populate: { path: "courseId" } });
     if (!attempt) return res.status(404).json({ message: "Completed result not found" });
     const examObjectId = attempt.examId?._id || attempt.examId;
@@ -277,5 +277,3 @@ async function resultRows() {
     status: result.status
   }));
 }
-
-

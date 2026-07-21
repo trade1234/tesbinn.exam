@@ -264,7 +264,7 @@ export default function ExamScreen() {
       localStorage.removeItem(`exam_answers_${bundle.attempt?._id}`);
       localStorage.removeItem(`exam_leave_${bundle.attempt?._id}`);
       sessionStorage.removeItem("active_exam");
-      navigate(data.certificate ? `/student/certificates/${data.certificate._id}` : "/student/results");
+      navigate(`/student/results/${data.attempt._id}`, { replace: true, state: { result: data.result } });
     } finally {
       setSubmitting(false);
     }
@@ -455,9 +455,3 @@ export default function ExamScreen() {
     </div>
   );
 }
-
-
-
-
-
-

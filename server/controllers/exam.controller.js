@@ -295,7 +295,26 @@ export async function submitExam(req, res, next) {
 
     await logActivity(req, "SUBMIT_EXAM", `Submitted exam: "${exam.title}". Score: ${score}/${totalMarks} (${percentage}%, status: ${attempt.status})`);
 
-    res.json({ attempt, certificate, totalQuestions: questions.length, correctAnswers: questions.filter((q) => isCorrectAnswer(q, answerMap.get(String(q._id)))).length });
+    res.json({
+      attempt,
+      certificate,
+      totalMarks,
+      totalQuestions: questions.length,
+      correctAnswers: questions.filter((q) => isCorrectAnswer(q, answerMap.get(String(q._id)))).length,
+      result: {
+        attemptId: attempt._id,
+        studentName: req.user.name,
+        enrollmentNumber: req.user.enrollmentNumber || "",
+        trainingType: req.user.trainingTaken || exam.courseId?.courseName || "",
+        courseName: exam.courseId?.courseName || "",
+        examName: exam.title,
+        score,
+        totalMarks,
+        percentage,
+        status: attempt.status,
+        submittedAt: attempt.submittedAt
+      }
+    });
   } catch (error) {
     next(error);
   }

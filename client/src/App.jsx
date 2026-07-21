@@ -19,6 +19,7 @@ import ApplicationRegistration from "./pages/ApplicationRegistration.jsx";
 import RetakeUsers from "./pages/RetakeUsers.jsx";
 import DisqualifiedStudents from "./pages/DisqualifiedStudents.jsx";
 import Certificates from "./pages/Certificates.jsx";
+import StudentResult from "./pages/StudentResult.jsx";
 
 export default function App() {
   return (
@@ -46,6 +47,7 @@ export default function App() {
           <Route path="/student" element={<StudentDashboard />} />
           <Route path="/student/courses" element={<StudentExams />} />
           <Route path="/student/results" element={<Results />} />
+          <Route path="/student/results/:attemptId" element={<StudentResult />} />
           <Route path="/student/certificates" element={<Certificates />} />
           <Route path="/student/certificates/:id" element={<Certificates />} />
           <Route path="/student/profile" element={<Profile />} />
@@ -57,6 +59,3 @@ export default function App() {
     </Routes>
   );
 }
-
-
-
