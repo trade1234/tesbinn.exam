@@ -7,6 +7,7 @@ import { courseMatchesTraining, findAssignedCourseForStudent } from "../utils/co
 import { logActivity } from "../utils/logger.js";
 import { scheduledExamEnd, scheduledRemainingSeconds } from "../utils/examTiming.js";
 import { canGrantRetake } from "../utils/retakePolicy.js";
+import { issueCertificate } from "./certificate.controller.js";
 
 function normalizeAnswer(value = "") {
   return String(value).trim().replace(/\s+/g, " ").toLowerCase();
@@ -289,9 +290,12 @@ export async function submitExam(req, res, next) {
     attempt.submittedAt = new Date();
     await attempt.save();
 
+    await exam.populate("courseId");
+    const certificate = await issueCertificate({ attempt, student: req.user, exam, course: exam.courseId, totalMarks });
+
     await logActivity(req, "SUBMIT_EXAM", `Submitted exam: "${exam.title}". Score: ${score}/${totalMarks} (${percentage}%, status: ${attempt.status})`);
 
-    res.json({ attempt, totalQuestions: questions.length, correctAnswers: questions.filter((q) => isCorrectAnswer(q, answerMap.get(String(q._id)))).length });
+    res.json({ attempt, certificate, totalQuestions: questions.length, correctAnswers: questions.filter((q) => isCorrectAnswer(q, answerMap.get(String(q._id)))).length });
   } catch (error) {
     next(error);
   }

@@ -260,11 +260,11 @@ export default function ExamScreen() {
     setSubmitting(true);
     try {
       await save();
-      await api.post("/exams/submit", { attemptId: bundle.attempt?._id });
+      const { data } = await api.post("/exams/submit", { attemptId: bundle.attempt?._id });
       localStorage.removeItem(`exam_answers_${bundle.attempt?._id}`);
       localStorage.removeItem(`exam_leave_${bundle.attempt?._id}`);
       sessionStorage.removeItem("active_exam");
-      navigate("/student/results");
+      navigate(data.certificate ? `/student/certificates/${data.certificate._id}` : "/student/results");
     } finally {
       setSubmitting(false);
     }
