@@ -61,6 +61,20 @@ async function examIdsForCourse(courseId) {
   return exams.map((exam) => exam._id);
 }
 
+async function studentIdsForFilters({ search, batchYear }) {
+  if (!search && !batchYear) return null;
+  const studentQuery = { role: "STUDENT" };
+  if (batchYear) studentQuery.batchYear = Number(batchYear);
+  if (search) {
+    const term = String(search).trim().replace(/[.*+?^$()|[\]\\]/g, "\\$&");
+    studentQuery.$or = [
+      { name: { $regex: term, $options: "i" } },
+      { enrollmentNumber: { $regex: term, $options: "i" } },
+      { email: { $regex: term, $options: "i" } }
+    ];
+  }
+  return User.find(studentQuery).distinct("_id");
+}
 function applyDateRange(query, field, { from, to }) {
   if (!from && !to) return;
   query[field] = {};
@@ -74,13 +88,20 @@ export async function listResults(req, res, next) {
 
     const query = req.user.role === "STUDENT" ? { studentId: req.user._id } : {};
     if (req.query.examId) query.examId = req.query.examId;
+    if (req.user.role === "ADMIN") {
+      const studentIds = await studentIdsForFilters(req.query);
+      if (studentIds) query.studentId = { $in: studentIds };
+      if (req.query.status) query.status = req.query.status;
+    }
 
     const courseExamIds = await examIdsForCourse(req.query.courseId);
     if (courseExamIds) query.examId = req.query.examId ? query.examId : { $in: courseExamIds };
     applyDateRange(query, "submittedAt", { from: req.query.from, to: req.query.to });
 
-    const results = await ExamAttempt.find({ ...query, status: { $nin: ["IN_PROGRESS", "RETAKE_GRANTED"] } })
-      .populate("studentId", "name email enrollmentNumber")
+    const completedStatus = query.status || { $nin: ["IN_PROGRESS", "RETAKE_GRANTED"] };
+    delete query.status;
+    const results = await ExamAttempt.find({ ...query, status: completedStatus })
+      .populate("studentId", "name email enrollmentNumber batchYear")
       .populate({ path: "examId", populate: { path: "courseId" } })
       .sort({ submittedAt: -1 });
     res.json(results);
@@ -95,13 +116,16 @@ export async function listActiveAttempts(req, res, next) {
 
     const query = {};
     if (req.query.examId) query.examId = req.query.examId;
+    const studentIds = await studentIdsForFilters(req.query);
+    if (studentIds) query.studentId = { $in: studentIds };
+    if (req.query.status) query.status = req.query.status;
 
     const courseExamIds = await examIdsForCourse(req.query.courseId);
     if (courseExamIds) query.examId = req.query.examId ? query.examId : { $in: courseExamIds };
     applyDateRange(query, "startedAt", { from: req.query.from, to: req.query.to });
 
     const activeAttempts = await ExamAttempt.find({ ...query, status: "IN_PROGRESS" })
-      .populate("studentId", "name email enrollmentNumber")
+      .populate("studentId", "name email enrollmentNumber batchYear")
       .populate({ path: "examId", populate: { path: "courseId" } })
       .sort({ startedAt: -1 });
     res.json(activeAttempts);
@@ -113,7 +137,7 @@ export async function listActiveAttempts(req, res, next) {
 export async function listDisqualifiedAttempts(req, res, next) {
   try {
     const attempts = await ExamAttempt.find({ status: "DISQUALIFIED" })
-      .populate("studentId", "name email enrollmentNumber")
+      .populate("studentId", "name email enrollmentNumber batchYear")
       .populate({ path: "examId", populate: { path: "courseId" } })
       .sort({ submittedAt: -1 });
     res.json(attempts);
@@ -127,7 +151,7 @@ export async function listDisqualificationHistory(req, res, next) {
     const attempts = await ExamAttempt.find({
       $or: [{ wasDisqualified: true }, { status: "DISQUALIFIED" }]
     })
-      .populate("studentId", "name email enrollmentNumber")
+      .populate("studentId", "name email enrollmentNumber batchYear")
       .populate({ path: "examId", populate: { path: "courseId" } })
       .populate("retakeGrantedBy", "name email")
       .sort({ lastDisqualifiedAt: -1, submittedAt: -1 });
@@ -223,7 +247,7 @@ export async function exportPdf(req, res, next) {
   try {
     await finalizeExpiredAttempts();
 
-    const results = await resultRows();
+    const results = await resultRows(req.query);
     const doc = new PDFDocument({ margin: 40 });
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", "attachment; filename=exam-results.pdf");
@@ -238,7 +262,7 @@ export async function exportPdf(req, res, next) {
   }
 }
 
-export async function exportExcel(_req, res, next) {
+export async function exportExcel(req, res, next) {
   try {
     await finalizeExpiredAttempts();
 
@@ -247,13 +271,14 @@ export async function exportExcel(_req, res, next) {
     sheet.columns = [
       { header: "Student", key: "student", width: 24 },
       { header: "Enrollment", key: "enrollment", width: 18 },
+      { header: "Batch Year", key: "batchYear", width: 12 },
       { header: "Course", key: "course", width: 24 },
       { header: "Exam", key: "exam", width: 24 },
       { header: "Score", key: "score", width: 10 },
       { header: "Percentage", key: "percentage", width: 14 },
       { header: "Status", key: "status", width: 12 }
     ];
-    sheet.addRows(await resultRows());
+    sheet.addRows(await resultRows(req.query));
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     res.setHeader("Content-Disposition", "attachment; filename=exam-results.xlsx");
     await workbook.xlsx.write(res);
@@ -263,13 +288,20 @@ export async function exportExcel(_req, res, next) {
   }
 }
 
-async function resultRows() {
-  const results = await ExamAttempt.find({ status: { $nin: ["IN_PROGRESS", "RETAKE_GRANTED"] } })
-    .populate("studentId", "name enrollmentNumber")
+async function resultRows(filters = {}) {
+  const query = { status: filters.status || { $nin: ["IN_PROGRESS", "RETAKE_GRANTED"] } };
+  const studentIds = await studentIdsForFilters(filters);
+  if (studentIds) query.studentId = { $in: studentIds };
+  const courseExamIds = await examIdsForCourse(filters.courseId);
+  if (courseExamIds) query.examId = { $in: courseExamIds };
+  applyDateRange(query, "submittedAt", { from: filters.from, to: filters.to });
+  const results = await ExamAttempt.find(query)
+    .populate("studentId", "name enrollmentNumber batchYear")
     .populate({ path: "examId", populate: { path: "courseId" } });
   return results.map((result) => ({
     student: result.studentId?.name || "Unknown",
     enrollment: result.studentId?.enrollmentNumber || "",
+    batchYear: result.studentId?.batchYear || "",
     course: result.examId?.courseId?.courseName || "",
     exam: result.examId?.title || "",
     score: result.score,

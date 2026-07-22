@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, Download, Eye, Filter, RotateCcw, XCircle } from "lucide-react";
+import { CheckCircle2, Download, Eye, Filter, RotateCcw, Search, XCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import DataTable from "../components/DataTable.jsx";
 import Modal from "../components/Modal.jsx";
@@ -13,6 +13,9 @@ function formatDateTime(value) {
 function buildResultQuery(filters) {
   const params = new URLSearchParams();
   if (filters.courseId) params.set("courseId", filters.courseId);
+  if (filters.search) params.set("search", filters.search);
+  if (filters.batchYear) params.set("batchYear", filters.batchYear);
+  if (filters.status) params.set("status", filters.status);
   if (filters.date) {
     const start = new Date(`${filters.date}T00:00:00`);
     const end = new Date(`${filters.date}T23:59:59.999`);
@@ -36,7 +39,7 @@ export default function Results() {
   const [completedRows, setCompletedRows] = useState([]);
   const [activeRows, setActiveRows] = useState([]);
   const [courses, setCourses] = useState([]);
-  const [filters, setFilters] = useState({ courseId: "", date: "" });
+  const [filters, setFilters] = useState({ search: "", batchYear: "", courseId: "", status: "", date: "" });
   const [review, setReview] = useState(null);
   const [reviewLoading, setReviewLoading] = useState(false);
   const [reviewError, setReviewError] = useState("");
@@ -60,7 +63,7 @@ export default function Results() {
   }
 
   function resetFilters() {
-    setFilters({ courseId: "", date: "" });
+    setFilters({ search: "", batchYear: "", courseId: "", status: "", date: "" });
   }
   async function openReview(row) {
     setReviewError("");
@@ -111,13 +114,24 @@ export default function Results() {
         </div>
         {isAdmin && (
           <div className="grid gap-2 sm:flex">
-            <button className="btn-secondary" onClick={() => downloadFile("/results/export/pdf", "exam-results.pdf")}><Download size={16} /> PDF</button>
-            <button className="btn-primary" onClick={() => downloadFile("/results/export/excel", "exam-results.xlsx")}><Download size={16} /> Excel</button>
+            <button className="btn-secondary" onClick={() => downloadFile("/results/export/pdf"+query, "exam-results.pdf")}><Download size={16} /> PDF</button>
+            <button className="btn-primary" onClick={() => downloadFile("/results/export/excel"+query, "exam-results.xlsx")}><Download size={16} /> Excel</button>
           </div>
         )}
       </div>
 
-      <section className="grid gap-3 rounded-xl border border-blue-100 bg-white p-4 shadow-soft dark:border-slate-800 dark:bg-[#111a2b] md:grid-cols-[1.3fr_1fr_auto] md:items-end">
+      <section className="grid gap-3 rounded-xl border border-blue-100 bg-white p-4 shadow-soft dark:border-slate-800 dark:bg-[#111a2b] md:grid-cols-2 xl:grid-cols-6 xl:items-end">
+        {isAdmin && <label className="space-y-1 text-sm font-semibold text-slate-600 dark:text-slate-300">
+          <span className="inline-flex items-center gap-2"><Search size={16} /> Student</span>
+          <input className="input" placeholder="Name, student ID, or email" value={filters.search} onChange={(event) => updateFilter("search", event.target.value)} />
+        </label>}
+        {isAdmin && <label className="space-y-1 text-sm font-semibold text-slate-600 dark:text-slate-300">
+          <span>Batch year</span>
+          <select className="input" value={filters.batchYear} onChange={(event) => updateFilter("batchYear", event.target.value)}>
+            <option value="">All batches</option>
+            {Array.from({ length: 15 }, (_, index) => new Date().getFullYear() - index).map((year) => <option key={year} value={year}>{year}</option>)}
+          </select>
+        </label>}
         <label className="space-y-1 text-sm font-semibold text-slate-600 dark:text-slate-300">
           <span className="inline-flex items-center gap-2"><Filter size={16} /> Course</span>
           <select className="input" value={filters.courseId} onChange={(event) => updateFilter("courseId", event.target.value)}>
@@ -125,11 +139,19 @@ export default function Results() {
             {courses.filter(Boolean).map((course) => <option key={course._id} value={course._id}>{course.courseCode} - {course.courseName}</option>)}
           </select>
         </label>
-        <label className="space-y-1 text-sm font-semibold text-slate-600 dark:text-slate-300">
+        {isAdmin && activeTab === "completed" && <label className="space-y-1 text-sm font-semibold text-slate-600 dark:text-slate-300">
+          <span>Result status</span>
+          <select className="input" value={filters.status} onChange={(event) => updateFilter("status", event.target.value)}>
+            <option value="">All results</option>
+            <option value="PASS">Passed</option>
+            <option value="FAIL">Failed</option>
+            <option value="DISQUALIFIED">Disqualified</option>
+          </select>
+        </label>}<label className="space-y-1 text-sm font-semibold text-slate-600 dark:text-slate-300">
           <span>Exam date</span>
           <input className="input" type="date" value={filters.date} onChange={(event) => updateFilter("date", event.target.value)} />
         </label>
-        <button className="btn-secondary h-10" type="button" onClick={resetFilters}>Reset</button>
+        <button className="btn-secondary h-10" type="button" onClick={resetFilters}>Reset filters</button>
       </section>
 
       {isAdmin && (
@@ -157,6 +179,7 @@ export default function Results() {
               <p className="font-mono text-xs text-slate-500 dark:text-slate-400">{row.studentId?.enrollmentNumber || row.studentId?.email}</p>
             </div>
           ) }] : []),
+          ...(isAdmin ? [{ key: "batchYear", label: "Batch", render: (row) => row.studentId?.batchYear || "--" }] : []),
           { key: "course", label: "Course", render: (row) => row.examId?.courseId?.courseName },
           { key: "exam", label: "Exam", render: (row) => row.examId?.title },
           { key: "submittedAt", label: "Submitted / Finished", render: (row) => formatDateTime(row.submittedAt) },
@@ -185,6 +208,7 @@ export default function Results() {
               <p className="font-mono text-xs text-slate-500 dark:text-slate-400">{row.studentId?.enrollmentNumber || row.studentId?.email}</p>
             </div>
           ) },
+          ...(isAdmin ? [{ key: "batchYear", label: "Batch", render: (row) => row.studentId?.batchYear || "--" }] : []),
           { key: "course", label: "Course", render: (row) => row.examId?.courseId?.courseName },
           { key: "exam", label: "Exam", render: (row) => row.examId?.title },
           { key: "startedAt", label: "Started At", render: (row) => formatDateTime(row.startedAt) },
