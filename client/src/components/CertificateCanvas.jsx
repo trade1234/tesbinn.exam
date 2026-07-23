@@ -11,11 +11,11 @@ export function drawCertificate(canvas, c, logo, qr) {
   ctx.strokeStyle="#d5a23c";ctx.lineWidth=5;ctx.strokeRect(48,48,w-96,h-96);ctx.strokeStyle="#e7bd68";ctx.lineWidth=2;ctx.strokeRect(62,62,w-124,h-124);
   ctx.fillStyle="#062657";ctx.beginPath();ctx.moveTo(28,28);ctx.lineTo(430,28);ctx.lineTo(28,350);ctx.fill();ctx.beginPath();ctx.moveTo(w-28,h-28);ctx.lineTo(w-420,h-28);ctx.lineTo(w-28,h-360);ctx.fill();ctx.strokeStyle="#d5a23c";ctx.lineWidth=7;ctx.beginPath();ctx.moveTo(28,368);ctx.lineTo(452,28);ctx.stroke();ctx.beginPath();ctx.moveTo(w-445,h-28);ctx.lineTo(w-28,h-382);ctx.stroke();
   if(logo)ctx.drawImage(logo,w/2-64,82,128,128);
-  const badgeX=1370,badgeY=175,badgePoints=24;
-  ctx.save();ctx.shadowColor="rgba(24,119,242,.28)";ctx.shadowBlur=16;ctx.shadowOffsetY=5;ctx.beginPath();
-  for(let i=0;i<badgePoints;i++){const angle=-Math.PI/2+i*Math.PI*2/badgePoints,radius=i%2===0?43:37,x=badgeX+Math.cos(angle)*radius,y=badgeY+Math.sin(angle)*radius;if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)}
-  ctx.closePath();const badgeGradient=ctx.createLinearGradient(badgeX-35,badgeY-35,badgeX+35,badgeY+35);badgeGradient.addColorStop(0,"#2d88ff");badgeGradient.addColorStop(1,"#0866d9");ctx.fillStyle=badgeGradient;ctx.fill();ctx.restore();
-  ctx.strokeStyle="#ffffff";ctx.lineWidth=8;ctx.lineCap="round";ctx.lineJoin="round";ctx.beginPath();ctx.moveTo(1348,175);ctx.lineTo(1363,190);ctx.lineTo(1394,156);ctx.stroke();ctx.textAlign="center";ctx.fillStyle="#0866d9";ctx.font="700 14px Arial";ctx.fillText("VERIFIED",badgeX,235);
+  const badgeX=1370,badgeY=175,badgeRadius=45,badgeSamples=144;
+  ctx.save();ctx.shadowColor="rgba(0,63,160,.38)";ctx.shadowBlur=14;ctx.shadowOffsetY=7;ctx.beginPath();
+  for(let i=0;i<=badgeSamples;i++){const angle=-Math.PI/2+i*Math.PI*2/badgeSamples,radius=badgeRadius+6*Math.cos(angle*12),x=badgeX+Math.cos(angle)*radius,y=badgeY+Math.sin(angle)*radius;if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)}
+  ctx.closePath();const badgeGradient=ctx.createRadialGradient(badgeX-16,badgeY-18,5,badgeX,badgeY,badgeRadius+8);badgeGradient.addColorStop(0,"#55a0ff");badgeGradient.addColorStop(.48,"#247be8");badgeGradient.addColorStop(1,"#0754bd");ctx.fillStyle=badgeGradient;ctx.fill();ctx.restore();
+  ctx.lineCap="round";ctx.lineJoin="round";ctx.strokeStyle="rgba(0,46,126,.38)";ctx.lineWidth=11;ctx.beginPath();ctx.moveTo(1348,176);ctx.lineTo(1363,191);ctx.lineTo(1395,156);ctx.stroke();ctx.strokeStyle="#f2f4f7";ctx.lineWidth=10;ctx.beginPath();ctx.moveTo(1346,173);ctx.lineTo(1362,189);ctx.lineTo(1393,154);ctx.stroke();
   const center=(text,y,font,color="#16324f",maxWidth=w-240)=>{ctx.font=font;ctx.fillStyle=color;ctx.textAlign="center";ctx.fillText(String(text||""),w/2,y,maxWidth)};
   center(c.companyName||"Trade Ethiopia School of Business and Innovation",244,"700 28px Arial","#0b5cab",900);
   center("CERTIFICATE OF ACHIEVEMENT",330,"700 54px Georgia","#13294b");
@@ -36,10 +36,6 @@ export function drawCertificate(canvas, c, logo, qr) {
   resultCell("FINAL SCORE",scoreText,0,"#0754ad");
   resultCell("PERCENTAGE",percentageText,1,"#0754ad");
   resultCell("RESULT",resultText,2,"#08783f");
-  const stampX=1070,stampY=885;
-  ctx.save();ctx.globalAlpha=.92;ctx.strokeStyle="#0866d9";ctx.lineWidth=5;ctx.beginPath();ctx.arc(stampX,stampY,66,0,Math.PI*2);ctx.stroke();ctx.lineWidth=2;ctx.beginPath();ctx.arc(stampX,stampY,56,0,Math.PI*2);ctx.stroke();
-  ctx.fillStyle="#0866d9";ctx.textAlign="center";ctx.font="700 13px Arial";ctx.fillText("TRADE ETHIOPIA",stampX,stampY-28);ctx.font="700 11px Arial";ctx.fillText("OFFICIAL DIGITAL STAMP",stampX,stampY+38);
-  ctx.fillStyle="#e6f2ff";ctx.beginPath();ctx.arc(stampX,stampY+2,26,0,Math.PI*2);ctx.fill();ctx.strokeStyle="#0866d9";ctx.lineWidth=3;ctx.stroke();ctx.lineWidth=5;ctx.lineCap="round";ctx.lineJoin="round";ctx.beginPath();ctx.moveTo(stampX-13,stampY+2);ctx.lineTo(stampX-3,stampY+12);ctx.lineTo(stampX+16,stampY-10);ctx.stroke();ctx.restore();
   ctx.textAlign="left";ctx.fillStyle="#475569";ctx.font="18px Arial";ctx.fillText("Certificate ID",150,875);ctx.fillStyle="#13294b";ctx.font="700 20px Arial";ctx.fillText(c.certificateId,150,910,330);
   ctx.textAlign="center";ctx.strokeStyle="#64748b";ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(630,900);ctx.lineTo(970,900);ctx.stroke();ctx.fillStyle="#13294b";ctx.font="italic 25px Georgia";ctx.fillText(c.signatoryName||"Authorized Certification Officer",800,890,320);ctx.font="16px Arial";ctx.fillStyle="#64748b";ctx.fillText("Digitally Signed & Verified",800,925);
   const issueDate=new Date(c.issueDate);
