@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, Download, Eye, Filter, RotateCcw, Search, XCircle } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 import DataTable from "../components/DataTable.jsx";
 import Modal from "../components/Modal.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -33,7 +32,6 @@ function answerLabel(questionType, value, options = {}) {
   return value;
 }
 export default function Results() {
-  const navigate = useNavigate();
   const { isAdmin } = useAuth();
   const [activeTab, setActiveTab] = useState("completed");
   const [completedRows, setCompletedRows] = useState([]);
@@ -186,9 +184,6 @@ export default function Results() {
           { key: "score", label: "Score" },
           { key: "percentage", label: "Percentage", render: (row) => `${row.percentage}%` },
           { key: "status", label: "Status", render: (row) => <span className={`rounded-full px-3 py-1 text-xs font-bold ${row.status === "PASS" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300" : "bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300"}`}>{row.status}</span> },
-          ...(!isAdmin ? [{ key: "image", label: "Result Image", render: (row) => (
-            <button className="btn-primary" type="button" onClick={() => navigate(`/student/results/${row._id}`)}><Download size={15} /> Open & Download</button>
-          ) }] : []),
           { key: "review", label: "Answer Sheet", render: (row) => (
             <button className="btn-secondary" type="button" onClick={() => openReview(row)}>
               <Eye size={15} /> View Answers
