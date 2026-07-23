@@ -146,6 +146,7 @@ export default function Layout({ role }) {
   const studentLinks = [
     { to: "/student", label: "Dashboard", icon: Home },
     { to: "/student/courses", label: "Exams", icon: BookOpen },
+    { to: "/student/results", label: "Results", icon: FileBarChart },
     { to: "/student/profile", label: "Profile", icon: Settings }
   ];
   const links = role === "ADMIN" ? adminLinks : studentLinks;
