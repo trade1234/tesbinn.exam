@@ -36,6 +36,10 @@ export function drawCertificate(canvas, c, logo, qr) {
   resultCell("FINAL SCORE",scoreText,0,"#0754ad");
   resultCell("PERCENTAGE",percentageText,1,"#0754ad");
   resultCell("RESULT",resultText,2,"#08783f");
+  const stampX=1070,stampY=885;
+  ctx.save();ctx.globalAlpha=.92;ctx.strokeStyle="#0866d9";ctx.lineWidth=5;ctx.beginPath();ctx.arc(stampX,stampY,66,0,Math.PI*2);ctx.stroke();ctx.lineWidth=2;ctx.beginPath();ctx.arc(stampX,stampY,56,0,Math.PI*2);ctx.stroke();
+  ctx.fillStyle="#0866d9";ctx.textAlign="center";ctx.font="700 13px Arial";ctx.fillText("TRADE ETHIOPIA",stampX,stampY-28);ctx.font="700 11px Arial";ctx.fillText("OFFICIAL DIGITAL STAMP",stampX,stampY+38);
+  ctx.fillStyle="#e6f2ff";ctx.beginPath();ctx.arc(stampX,stampY+2,26,0,Math.PI*2);ctx.fill();ctx.strokeStyle="#0866d9";ctx.lineWidth=3;ctx.stroke();ctx.lineWidth=5;ctx.lineCap="round";ctx.lineJoin="round";ctx.beginPath();ctx.moveTo(stampX-13,stampY+2);ctx.lineTo(stampX-3,stampY+12);ctx.lineTo(stampX+16,stampY-10);ctx.stroke();ctx.restore();
   ctx.textAlign="left";ctx.fillStyle="#475569";ctx.font="18px Arial";ctx.fillText("Certificate ID",150,875);ctx.fillStyle="#13294b";ctx.font="700 20px Arial";ctx.fillText(c.certificateId,150,910,330);
   ctx.textAlign="center";ctx.strokeStyle="#64748b";ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(630,900);ctx.lineTo(970,900);ctx.stroke();ctx.fillStyle="#13294b";ctx.font="italic 25px Georgia";ctx.fillText(c.signatoryName||"Authorized Certification Officer",800,890,320);ctx.font="16px Arial";ctx.fillStyle="#64748b";ctx.fillText("Digitally Signed & Verified",800,925);
   const issueDate=new Date(c.issueDate);
