@@ -1,6 +1,6 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Download, ListChecks, LoaderCircle } from "lucide-react";
-import { Link, useLocation, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import ResultImageCanvas, { resultImageBlob } from "../components/ResultImageCanvas.jsx";
 import { api } from "../services/api.js";
 
@@ -13,6 +13,7 @@ function resultFromReview(review) {
 export default function StudentResult() {
   const { attemptId } = useParams();
   const { state } = useLocation();
+  const navigate = useNavigate();
   const initial = state?.result || null;
   const [result, setResult] = useState(initial);
   const [error, setError] = useState("");
@@ -20,6 +21,13 @@ export default function StudentResult() {
   useEffect(() => {
     api.get(`/results/review/${attemptId}`).then(({ data }) => setResult(resultFromReview(data))).catch((requestError) => { if (!initial) setError(requestError.response?.data?.message || "Could not load this result."); });
   }, [attemptId]);
+  useEffect(() => {
+    if (result?.status !== "PASS") return;
+    api.get("/certificates").then(({ data }) => {
+      const certificate = data.find((item) => String(item.attemptId?._id || item.attemptId) === String(attemptId));
+      if (certificate?._id) navigate(`/student/certificates/${certificate._id}`, { replace: true, state: { certificate } });
+    }).catch(() => {});
+  }, [attemptId, navigate, result?.status]);
   async function downloadImage() {
     if (!result) return;
     setDownloading(true);
