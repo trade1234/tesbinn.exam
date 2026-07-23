@@ -4,8 +4,8 @@ import logoUrl from "../logo/download.png";
 export function drawCertificate(canvas, c, logo) {
   const ctx=canvas.getContext("2d"),w=1600,h=1130; canvas.width=w;canvas.height=h;
   const g=ctx.createLinearGradient(0,0,w,h);g.addColorStop(0,"#f8fbff");g.addColorStop(.55,"#fff");g.addColorStop(1,"#eef6ff");ctx.fillStyle=g;ctx.fillRect(0,0,w,h);
-  ctx.strokeStyle="#0b5cab";ctx.lineWidth=18;ctx.strokeRect(28,28,w-56,h-56);ctx.strokeStyle="#c79b2b";ctx.lineWidth=4;ctx.strokeRect(52,52,w-104,h-104);
-  ctx.fillStyle="#0b5cab";ctx.beginPath();ctx.moveTo(28,28);ctx.lineTo(330,28);ctx.lineTo(28,330);ctx.fill();ctx.beginPath();ctx.moveTo(w-28,h-28);ctx.lineTo(w-330,h-28);ctx.lineTo(w-28,h-330);ctx.fill();
+  ctx.strokeStyle="#d5a23c";ctx.lineWidth=5;ctx.strokeRect(48,48,w-96,h-96);ctx.strokeStyle="#e7bd68";ctx.lineWidth=2;ctx.strokeRect(62,62,w-124,h-124);
+  ctx.fillStyle="#062657";ctx.beginPath();ctx.moveTo(28,28);ctx.lineTo(430,28);ctx.lineTo(28,350);ctx.fill();ctx.beginPath();ctx.moveTo(w-28,h-28);ctx.lineTo(w-420,h-28);ctx.lineTo(w-28,h-360);ctx.fill();ctx.strokeStyle="#d5a23c";ctx.lineWidth=7;ctx.beginPath();ctx.moveTo(28,368);ctx.lineTo(452,28);ctx.stroke();ctx.beginPath();ctx.moveTo(w-445,h-28);ctx.lineTo(w-28,h-382);ctx.stroke();
   if(logo)ctx.drawImage(logo,w/2-64,82,128,128);
   const center=(text,y,font,color="#16324f")=>{ctx.font=font;ctx.fillStyle=color;ctx.textAlign="center";ctx.fillText(text,w/2,y)};
   center(c.companyName||"Trade Ethiopia SBI",244,"700 28px Arial","#0b5cab");
@@ -16,8 +16,10 @@ export function drawCertificate(canvas, c, logo) {
   center("for successfully completing and passing",570,"24px Arial","#64748b");
   center(c.courseName,636,"700 38px Georgia","#13294b");
   center(c.examName,683,"22px Arial","#475569");
-  ctx.fillStyle="#edf6ff";ctx.roundRect(420,725,760,92,18);ctx.fill();
-  center("FINAL SCORE  "+c.score+" / "+c.totalMarks+"     |     "+c.percentage+"%     |     PASS",783,"700 27px Arial","#067647");
+  ctx.fillStyle="#f6f8fa";ctx.strokeStyle="#c9d0d8";ctx.lineWidth=2;ctx.beginPath();ctx.roundRect(420,715,760,112,18);ctx.fill();ctx.stroke();
+  ctx.strokeStyle="#dfb65f";ctx.beginPath();ctx.moveTo(674,732);ctx.lineTo(674,810);ctx.moveTo(926,732);ctx.lineTo(926,810);ctx.stroke();
+  center("FINAL SCORE",750,"700 15px Arial","#12203f");center(c.score+" / "+c.totalMarks,798,"700 29px Arial","#0754ad");
+  ctx.textAlign="center";ctx.fillStyle="#12203f";ctx.font="700 15px Arial";ctx.fillText("PERCENTAGE",800,750);ctx.fillStyle="#0754ad";ctx.font="700 29px Arial";ctx.fillText(c.percentage+"%",800,798);ctx.fillStyle="#12203f";ctx.font="700 15px Arial";ctx.fillText("RESULT",1052,750);ctx.fillStyle="#08783f";ctx.font="700 29px Arial";ctx.fillText("PASS",1052,798);
   ctx.textAlign="left";ctx.fillStyle="#475569";ctx.font="18px Arial";ctx.fillText("Certificate ID",125,920);ctx.fillStyle="#13294b";ctx.font="700 20px Arial";ctx.fillText(c.certificateId,125,952);
   ctx.textAlign="center";ctx.strokeStyle="#64748b";ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(630,935);ctx.lineTo(970,935);ctx.stroke();ctx.fillStyle="#13294b";ctx.font="italic 25px Georgia";ctx.fillText(c.signatoryName||"Authorized Certification Officer",800,925);ctx.font="16px Arial";ctx.fillStyle="#64748b";ctx.fillText("Authorized Signature",800,960);
   ctx.textAlign="right";ctx.font="18px Arial";ctx.fillText("Issue Date",1475,920);ctx.fillStyle="#13294b";ctx.font="700 20px Arial";ctx.fillText(new Date(c.issueDate).toLocaleDateString(undefined,{year:"numeric",month:"long",day:"numeric"}),1475,952);
