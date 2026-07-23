@@ -264,7 +264,14 @@ export default function ExamScreen() {
       localStorage.removeItem(`exam_answers_${bundle.attempt?._id}`);
       localStorage.removeItem(`exam_leave_${bundle.attempt?._id}`);
       sessionStorage.removeItem("active_exam");
-      navigate(`/student/results/${data.attempt._id}`, { replace: true, state: { result: data.result } });
+      if (data.certificate?._id) {
+        navigate(`/student/certificates/${data.certificate._id}`, {
+          replace: true,
+          state: { certificate: data.certificate }
+        });
+      } else {
+        navigate(`/student/results/${data.attempt._id}`, { replace: true, state: { result: data.result } });
+      }
     } finally {
       setSubmitting(false);
     }
@@ -334,7 +341,7 @@ export default function ExamScreen() {
       )}
       {leaveCountdown !== null && (
         <div className="fixed inset-x-0 top-0 z-[60] bg-red-600 px-4 py-3 text-center text-sm font-bold text-white shadow-lg">
-          Return to the exam immediately — disqualification in {leaveCountdown} second{leaveCountdown === 1 ? "" : "s"}.
+          Return to the exam immediately - disqualification in {leaveCountdown} second{leaveCountdown === 1 ? "" : "s"}.
         </div>
       )}
       <main className="mx-auto grid max-w-7xl gap-3 p-3 sm:gap-4 sm:p-4 lg:grid-cols-[240px_minmax(0,1fr)] xl:grid-cols-[260px_minmax(0,1fr)]">
