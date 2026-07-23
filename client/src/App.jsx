@@ -20,6 +20,7 @@ import RetakeUsers from "./pages/RetakeUsers.jsx";
 import DisqualifiedStudents from "./pages/DisqualifiedStudents.jsx";
 import Certificates from "./pages/Certificates.jsx";
 import StudentResult from "./pages/StudentResult.jsx";
+import VerifyCertificate from "./pages/VerifyCertificate.jsx";
 
 export default function App() {
   return (
@@ -27,6 +28,7 @@ export default function App() {
       <Route path="/" element={<Home />} />
       <Route path="/apply" element={<ApplicationRegistration />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/verify/:certificateId" element={<VerifyCertificate />} />
       <Route element={<ProtectedRoute role="ADMIN" />}>
         <Route element={<Layout role="ADMIN" />}>
           <Route path="/admin" element={<AdminDashboard />} />

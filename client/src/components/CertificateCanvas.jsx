@@ -1,12 +1,17 @@
 import { useEffect, useRef } from "react";
+import QRCode from "qrcode";
 import logoUrl from "../logo/download.png";
 
-export function drawCertificate(canvas, c, logo) {
+const verificationUrl=(certificate)=>`${window.location.origin}/verify/${encodeURIComponent(certificate.certificateId)}`;
+const loadImage=(src)=>new Promise(resolve=>{const image=new Image();image.onload=()=>resolve(image);image.onerror=()=>resolve(null);image.src=src});
+
+export function drawCertificate(canvas, c, logo, qr) {
   const ctx=canvas.getContext("2d"),w=1600,h=1130; canvas.width=w;canvas.height=h;
   const g=ctx.createLinearGradient(0,0,w,h);g.addColorStop(0,"#f8fbff");g.addColorStop(.55,"#fff");g.addColorStop(1,"#eef6ff");ctx.fillStyle=g;ctx.fillRect(0,0,w,h);
   ctx.strokeStyle="#d5a23c";ctx.lineWidth=5;ctx.strokeRect(48,48,w-96,h-96);ctx.strokeStyle="#e7bd68";ctx.lineWidth=2;ctx.strokeRect(62,62,w-124,h-124);
   ctx.fillStyle="#062657";ctx.beginPath();ctx.moveTo(28,28);ctx.lineTo(430,28);ctx.lineTo(28,350);ctx.fill();ctx.beginPath();ctx.moveTo(w-28,h-28);ctx.lineTo(w-420,h-28);ctx.lineTo(w-28,h-360);ctx.fill();ctx.strokeStyle="#d5a23c";ctx.lineWidth=7;ctx.beginPath();ctx.moveTo(28,368);ctx.lineTo(452,28);ctx.stroke();ctx.beginPath();ctx.moveTo(w-445,h-28);ctx.lineTo(w-28,h-382);ctx.stroke();
   if(logo)ctx.drawImage(logo,w/2-64,82,128,128);
+  ctx.fillStyle="#1684e8";ctx.beginPath();ctx.arc(1370,175,42,0,Math.PI*2);ctx.fill();ctx.strokeStyle="#ffffff";ctx.lineWidth=7;ctx.lineCap="round";ctx.beginPath();ctx.moveTo(1349,175);ctx.lineTo(1364,190);ctx.lineTo(1393,158);ctx.stroke();ctx.textAlign="center";ctx.fillStyle="#0754ad";ctx.font="700 14px Arial";ctx.fillText("VERIFIED",1370,235);
   const center=(text,y,font,color="#16324f",maxWidth=w-240)=>{ctx.font=font;ctx.fillStyle=color;ctx.textAlign="center";ctx.fillText(String(text||""),w/2,y,maxWidth)};
   center(c.companyName||"Trade Ethiopia School of Business and Innovation",244,"700 28px Arial","#0b5cab",900);
   center("CERTIFICATE OF ACHIEVEMENT",330,"700 54px Georgia","#13294b");
@@ -28,11 +33,12 @@ export function drawCertificate(canvas, c, logo) {
   resultCell("PERCENTAGE",percentageText,1,"#0754ad");
   resultCell("RESULT",resultText,2,"#08783f");
   ctx.textAlign="left";ctx.fillStyle="#475569";ctx.font="18px Arial";ctx.fillText("Certificate ID",150,875);ctx.fillStyle="#13294b";ctx.font="700 20px Arial";ctx.fillText(c.certificateId,150,910,330);
-  ctx.textAlign="center";ctx.strokeStyle="#64748b";ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(630,900);ctx.lineTo(970,900);ctx.stroke();ctx.fillStyle="#13294b";ctx.font="italic 25px Georgia";ctx.fillText(c.signatoryName||"Authorized Certification Officer",800,890,320);ctx.font="16px Arial";ctx.fillStyle="#64748b";ctx.fillText("Authorized Signature",800,925);
+  ctx.textAlign="center";ctx.strokeStyle="#64748b";ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(630,900);ctx.lineTo(970,900);ctx.stroke();ctx.fillStyle="#13294b";ctx.font="italic 25px Georgia";ctx.fillText(c.signatoryName||"Authorized Certification Officer",800,890,320);ctx.font="16px Arial";ctx.fillStyle="#64748b";ctx.fillText("Digitally Signed & Verified",800,925);
   const issueDate=new Date(c.issueDate);
   const issueDateText=Number.isNaN(issueDate.getTime())?"Date unavailable":issueDate.toLocaleDateString(undefined,{year:"numeric",month:"long",day:"numeric"});
   ctx.textAlign="center";ctx.fillStyle="#475569";ctx.font="18px Arial";ctx.fillText("Issue Date",1250,875);ctx.fillStyle="#13294b";ctx.font="700 20px Arial";ctx.fillText(issueDateText,1250,910,330);
-  center("Verified professional credential - "+(c.enrollmentNumber||"Trade Ethiopia Certification"),1035,"16px Arial","#64748b",1050);
+  if(qr){ctx.fillStyle="#ffffff";ctx.fillRect(112,940,112,112);ctx.drawImage(qr,118,946,100,100);ctx.textAlign="left";ctx.fillStyle="#0754ad";ctx.font="700 14px Arial";ctx.fillText("SCAN TO VERIFY",238,985);ctx.fillStyle="#64748b";ctx.font="14px Arial";ctx.fillText("Authentic digital credential",238,1012);}
+  center("Verified professional credential - "+(c.enrollmentNumber||"Trade Ethiopia Certification"),1065,"16px Arial","#64748b",800);
 }
-export default function CertificateCanvas({certificate,className=""}){const ref=useRef(null);useEffect(()=>{if(!certificate)return;const img=new Image();img.onload=()=>drawCertificate(ref.current,certificate,img);img.onerror=()=>drawCertificate(ref.current,certificate);img.src=logoUrl},[certificate]);return <canvas ref={ref} className={"block aspect-[1600/1130] h-auto w-full rounded-lg "+className} aria-label={"Certificate for "+certificate?.studentName}/>;}
-export async function certificateBlob(certificate){const canvas=document.createElement("canvas");const logo=new Image();await new Promise(resolve=>{logo.onload=resolve;logo.onerror=resolve;logo.src=logoUrl});drawCertificate(canvas,certificate,logo.complete?logo:null);return new Promise(resolve=>canvas.toBlob(resolve,"image/png",1));}
+export default function CertificateCanvas({certificate,className=""}){const ref=useRef(null);useEffect(()=>{if(!certificate)return;let active=true;(async()=>{const [logo,qr]=await Promise.all([loadImage(logoUrl),QRCode.toDataURL(verificationUrl(certificate),{width:300,margin:1,errorCorrectionLevel:"M"}).then(loadImage).catch(()=>null)]);if(active)drawCertificate(ref.current,certificate,logo,qr)})();return()=>{active=false}},[certificate]);return <canvas ref={ref} className={"block aspect-[1600/1130] h-auto w-full rounded-lg "+className} aria-label={"Verified certificate for "+certificate?.studentName}/>;}
+export async function certificateBlob(certificate){const [logo,qr]=await Promise.all([loadImage(logoUrl),QRCode.toDataURL(verificationUrl(certificate),{width:300,margin:1,errorCorrectionLevel:"M"}).then(loadImage).catch(()=>null)]);const canvas=document.createElement("canvas");drawCertificate(canvas,certificate,logo,qr);return new Promise(resolve=>canvas.toBlob(resolve,"image/png",1));}
