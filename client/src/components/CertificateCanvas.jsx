@@ -27,11 +27,11 @@ export function drawCertificate(canvas, c, logo) {
   resultCell("FINAL SCORE",scoreText,0,"#0754ad");
   resultCell("PERCENTAGE",percentageText,1,"#0754ad");
   resultCell("RESULT",resultText,2,"#08783f");
-  ctx.textAlign="left";ctx.fillStyle="#475569";ctx.font="18px Arial";ctx.fillText("Certificate ID",125,920);ctx.fillStyle="#13294b";ctx.font="700 20px Arial";ctx.fillText(c.certificateId,125,952);
-  ctx.textAlign="center";ctx.strokeStyle="#64748b";ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(630,935);ctx.lineTo(970,935);ctx.stroke();ctx.fillStyle="#13294b";ctx.font="italic 25px Georgia";ctx.fillText(c.signatoryName||"Authorized Certification Officer",800,925,320);ctx.font="16px Arial";ctx.fillStyle="#64748b";ctx.fillText("Authorized Signature",800,960);
+  ctx.textAlign="left";ctx.fillStyle="#475569";ctx.font="18px Arial";ctx.fillText("Certificate ID",150,875);ctx.fillStyle="#13294b";ctx.font="700 20px Arial";ctx.fillText(c.certificateId,150,910,330);
+  ctx.textAlign="center";ctx.strokeStyle="#64748b";ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(630,900);ctx.lineTo(970,900);ctx.stroke();ctx.fillStyle="#13294b";ctx.font="italic 25px Georgia";ctx.fillText(c.signatoryName||"Authorized Certification Officer",800,890,320);ctx.font="16px Arial";ctx.fillStyle="#64748b";ctx.fillText("Authorized Signature",800,925);
   const issueDate=new Date(c.issueDate);
   const issueDateText=Number.isNaN(issueDate.getTime())?"Date unavailable":issueDate.toLocaleDateString(undefined,{year:"numeric",month:"long",day:"numeric"});
-  ctx.textAlign="center";ctx.fillStyle="#475569";ctx.font="18px Arial";ctx.fillText("Issue Date",1250,920);ctx.fillStyle="#13294b";ctx.font="700 20px Arial";ctx.fillText(issueDateText,1250,952);
+  ctx.textAlign="center";ctx.fillStyle="#475569";ctx.font="18px Arial";ctx.fillText("Issue Date",1250,875);ctx.fillStyle="#13294b";ctx.font="700 20px Arial";ctx.fillText(issueDateText,1250,910,330);
   center("Verified professional credential - "+(c.enrollmentNumber||"Trade Ethiopia Certification"),1035,"16px Arial","#64748b",1050);
 }
 export default function CertificateCanvas({certificate,className=""}){const ref=useRef(null);useEffect(()=>{if(!certificate)return;const img=new Image();img.onload=()=>drawCertificate(ref.current,certificate,img);img.onerror=()=>drawCertificate(ref.current,certificate);img.src=logoUrl},[certificate]);return <canvas ref={ref} className={"block aspect-[1600/1130] h-auto w-full rounded-lg "+className} aria-label={"Certificate for "+certificate?.studentName}/>;}
