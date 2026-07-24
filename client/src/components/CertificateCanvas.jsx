@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import QRCode from "qrcode";
 import logoUrl from "../logo/download.png";
 
-const verificationUrl=(certificate)=>`${window.location.origin}/verify/${encodeURIComponent(certificate.certificateId)}`;
+const verificationUrl=(certificate)=>`${window.location.origin}/#/verify/${encodeURIComponent(certificate.certificateId)}`;
 const loadImage=(src)=>new Promise(resolve=>{const image=new Image();image.onload=()=>resolve(image);image.onerror=()=>resolve(null);image.src=src});
 
 export function drawCertificate(canvas, c, logo, qr) {

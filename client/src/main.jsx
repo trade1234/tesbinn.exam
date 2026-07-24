@@ -7,6 +7,11 @@ import "./styles.css";
 
 document.title = "Tessbin Online Examination";
 
+if (window.location.pathname.startsWith("/verify/")) {
+  const verificationRoute = `${window.location.pathname}${window.location.search}`;
+  window.history.replaceState(null, "", `/#${verificationRoute}`);
+}
+
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <HashRouter>
