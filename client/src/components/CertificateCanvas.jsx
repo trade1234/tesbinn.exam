@@ -30,7 +30,8 @@ export function drawCertificate(canvas, c, logo, qr) {
   ctx.strokeStyle="#e1b955";ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(panelX+cellWidth,panelY+17);ctx.lineTo(panelX+cellWidth,panelY+panelHeight-17);ctx.moveTo(panelX+cellWidth*2,panelY+17);ctx.lineTo(panelX+cellWidth*2,panelY+panelHeight-17);ctx.stroke();
   const percentage=Number(c.percentage);
   const percentageText=Number.isFinite(percentage)?`${percentage.toFixed(2)}%`:"--";
-  const scoreText=Number.isFinite(Number(c.score))&&Number.isFinite(Number(c.totalMarks))?`${c.score} / ${c.totalMarks}`:"--";
+  const score=Number(c.score),totalMarks=Number(c.totalMarks);
+  const scoreText=Number.isFinite(score)&&Number.isFinite(totalMarks)?`${score.toFixed(2)} / ${totalMarks.toFixed(2)}`:"--";
   const resultText=String(c.status||"PASS").toUpperCase();
   const resultCell=(label,value,index,valueColor)=>{const x=panelX+cellWidth*(index+.5);ctx.textAlign="center";ctx.textBaseline="alphabetic";ctx.fillStyle="#334155";ctx.font="600 14px Arial";ctx.fillText(label,x,750,220);ctx.fillStyle=valueColor;ctx.font="700 27px Arial";ctx.fillText(value,x,797,220)};
   resultCell("FINAL SCORE",scoreText,0,"#0754ad");
