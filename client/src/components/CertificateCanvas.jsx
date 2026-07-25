@@ -4,6 +4,8 @@ import logoUrl from "../logo/download.png";
 
 const verificationUrl=(certificate)=>`${window.location.origin}/#/verify/${encodeURIComponent(certificate.certificateId)}`;
 const loadImage=(src)=>new Promise(resolve=>{const image=new Image();image.onload=()=>resolve(image);image.onerror=()=>resolve(null);image.src=src});
+const resultNumberFormatter=new Intl.NumberFormat("en-US",{minimumFractionDigits:2,maximumFractionDigits:2,useGrouping:false});
+const formatResultNumber=(value)=>resultNumberFormatter.format(Number(value));
 
 export function drawCertificate(canvas, c, logo, qr) {
   const ctx=canvas.getContext("2d"),w=1600,h=1130; canvas.width=w;canvas.height=h;
@@ -29,9 +31,9 @@ export function drawCertificate(canvas, c, logo, qr) {
   ctx.fillStyle="#f8fafc";ctx.strokeStyle="#cbd5e1";ctx.lineWidth=2;ctx.beginPath();ctx.roundRect(panelX,panelY,panelWidth,panelHeight,18);ctx.fill();ctx.stroke();
   ctx.strokeStyle="#e1b955";ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(panelX+cellWidth,panelY+17);ctx.lineTo(panelX+cellWidth,panelY+panelHeight-17);ctx.moveTo(panelX+cellWidth*2,panelY+17);ctx.lineTo(panelX+cellWidth*2,panelY+panelHeight-17);ctx.stroke();
   const percentage=Number(c.percentage);
-  const percentageText=Number.isFinite(percentage)?`${percentage.toFixed(2)}%`:"--";
+  const percentageText=Number.isFinite(percentage)?`${formatResultNumber(percentage)}%`:"--";
   const score=Number(c.score),totalMarks=Number(c.totalMarks);
-  const scoreText=Number.isFinite(score)&&Number.isFinite(totalMarks)?`${score.toFixed(2)} / ${totalMarks.toFixed(2)}`:"--";
+  const scoreText=Number.isFinite(score)&&Number.isFinite(totalMarks)?`${formatResultNumber(score)} / ${formatResultNumber(totalMarks)}`:"--";
   const resultText=String(c.status||"PASS").toUpperCase();
   const resultCell=(label,value,index,valueColor)=>{const x=panelX+cellWidth*(index+.5);ctx.textAlign="center";ctx.textBaseline="alphabetic";ctx.fillStyle="#334155";ctx.font="600 14px Arial";ctx.fillText(label,x,750,220);ctx.fillStyle=valueColor;ctx.font="700 27px Arial";ctx.fillText(value,x,797,220)};
   resultCell("FINAL SCORE",scoreText,0,"#0754ad");
