@@ -6,7 +6,7 @@ import Modal from "../components/Modal.jsx";
 import { api } from "../services/api.js";
 import { useAuth } from "../context/AuthContext.jsx";
 
-function displayPercentage(value){const number=Number(value);return Number.isFinite(number)?`${Number(number.toFixed(2))}%`:"--"}
+function displayPercentage(value){const number=Number(value);return Number.isFinite(number)?`${number.toFixed(2)}%`:"--"}
 
 export default function Certificates(){
  const {id}=useParams(),navigate=useNavigate(),location=useLocation(),{isAdmin}=useAuth(); const [items,setItems]=useState([]),[selected,setSelected]=useState(location.state?.certificate||null),[search,setSearch]=useState(""),[batchYear,setBatchYear]=useState(""),[course,setCourse]=useState(""),[editing,setEditing]=useState(null),[loading,setLoading]=useState(false);
