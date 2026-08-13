@@ -137,6 +137,7 @@ export default function Layout({ role }) {
     { to: "/admin/exams", label: "Exams", icon: ClipboardList },
     { to: "/admin/students", label: "Students", icon: Users },
     { to: "/admin/applications", label: "Applications", icon: FileCheck2 },
+    { to: "/admin/data", label: "Data", icon: FileSpreadsheet },
     { to: "/admin/results", label: "Results", icon: FileBarChart },
     { to: "/admin/certificates", label: "Certificates", icon: Award },
     { to: "/admin/retakes", label: "Retake Users", icon: RotateCcw },
