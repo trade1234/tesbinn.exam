@@ -1,8 +1,8 @@
-import { AlertCircle, Award, Bell, BookOpen, ChevronDown, ClipboardList, Clock3, FileBarChart, FileCheck2, Home, LogOut, Moon, Radio, RotateCcw, Search, Settings, ShieldAlert, Sun, UserRound, Users } from "lucide-react";
+import { AlertCircle, Award, Bell, BookOpen, ChevronDown, ClipboardList, Clock3, FileBarChart, FileCheck2, FileSpreadsheet, Home, LogOut, Moon, Radio, RotateCcw, Search, Settings, ShieldAlert, Sun, UserRound, Users } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
-import { api } from "../services/api.js";
+import { api, downloadFile } from "../services/api.js";
 import logoUrl from "../logo/download.png";
 
 function isLiveExam(exam, now = new Date()) {
@@ -222,6 +222,34 @@ export default function Layout({ role }) {
                   </button>
                 ))}
               </div>
+
+              {role === "ADMIN" && (
+                <>
+                  <p className="mb-3 mt-6 px-5 text-xs font-bold tracking-wider uppercase xl:px-7 text-slate-400 dark:text-slate-500">Export Excel</p>
+                  <div className="space-y-1.5 px-3 xl:px-5">
+                    <button
+                      className="flex min-h-9 w-full items-center gap-3.5 rounded-xl border border-slate-100 bg-white px-3.5 py-2 text-left text-sm font-semibold text-slate-700 shadow-sm transition hover:border-blue-100 hover:bg-slate-50 dark:border-slate-800 dark:bg-[#111a2b] dark:text-slate-300 dark:hover:bg-slate-800/70"
+                      type="button"
+                      onClick={() => downloadFile("/users/students/export/excel", "student-registrations.xlsx").catch((err) => setToast({ title: "Export Failed", message: err.message }))}
+                    >
+                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
+                        <FileSpreadsheet size={13} />
+                      </span>
+                      <span>Export Students</span>
+                    </button>
+                    <button
+                      className="flex min-h-9 w-full items-center gap-3.5 rounded-xl border border-slate-100 bg-white px-3.5 py-2 text-left text-sm font-semibold text-slate-700 shadow-sm transition hover:border-blue-100 hover:bg-slate-50 dark:border-slate-800 dark:bg-[#111a2b] dark:text-slate-300 dark:hover:bg-slate-800/70"
+                      type="button"
+                      onClick={() => downloadFile("/applications/export/excel", "all-applications.xlsx").catch((err) => setToast({ title: "Export Failed", message: err.message }))}
+                    >
+                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-[#1e9bf0]/15 text-[#0f88d2] dark:bg-[#17324d] dark:text-[#7dd3fc]">
+                        <FileSpreadsheet size={13} />
+                      </span>
+                      <span>Export Applications</span>
+                    </button>
+                  </div>
+                </>
+              )}
             </nav>
 
             <div className="px-4 py-4 xl:px-6">

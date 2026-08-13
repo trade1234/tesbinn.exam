@@ -254,7 +254,31 @@ async function applicationExportRows(filters = {}) {
   if (filters.program) query["trainingInformation.trainingProgram"] = filters.program;
   if (/^\d{4}-\d{2}$/.test(filters.month || "")) { const start = new Date(`${filters.month}-01T00:00:00.000Z`); query.submittedAt = { $gte: start, $lt: new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 1)) }; }
   const items = await Application.find(query).select("-passportPhoto -fayadaDigitalId -paymentScreenshot").sort({ submittedAt: -1 }).lean();
-  return items.map((item, index) => ({ number: index + 1, applicationNumber: item.applicationNumber, applicant: [item.personalInformation?.firstName, item.personalInformation?.lastName, item.personalInformation?.grandfatherName].filter(Boolean).join(" "), phone: item.personalInformation?.phoneNumber || "", email: item.personalInformation?.email || "", program: item.trainingInformation?.trainingProgram || "", trainingType: item.trainingInformation?.trainingType || "", status: item.status || "PENDING", submitted: item.submittedAt ? new Date(item.submittedAt).toLocaleString("en-GB") : "" }));
+  return items.map((item, index) => ({
+    number: index + 1,
+    applicationNumber: item.applicationNumber,
+    applicant: [item.personalInformation?.firstName, item.personalInformation?.lastName, item.personalInformation?.grandfatherName].filter(Boolean).join(" "),
+    firstName: item.personalInformation?.firstName || "",
+    lastName: item.personalInformation?.lastName || "",
+    grandfatherName: item.personalInformation?.grandfatherName || "",
+    gender: item.personalInformation?.gender || "",
+    age: item.personalInformation?.age || "",
+    phone: item.personalInformation?.phoneNumber || "",
+    email: item.personalInformation?.email || "",
+    subCity: item.personalInformation?.subCity || "",
+    woreda: item.personalInformation?.woreda || "",
+    address: item.personalInformation?.address || "",
+    institutionType: item.trainingInformation?.institutionType || "",
+    program: item.trainingInformation?.trainingProgram || "",
+    trainingType: item.trainingInformation?.trainingType || "",
+    trainingMode: item.trainingInformation?.trainingMode || "",
+    startMonth: item.trainingInformation?.trainingStartMonth || "",
+    endMonth: item.trainingInformation?.trainingEndMonth || "",
+    bankName: item.paymentInformation?.bankName || "",
+    status: item.status || "PENDING",
+    rejectionReason: item.rejectionReason || "",
+    submitted: item.submittedAt ? new Date(item.submittedAt).toLocaleString("en-GB") : ""
+  }));
 }
 
 async function applicationExportRowsById(id) {
@@ -264,7 +288,31 @@ async function applicationExportRowsById(id) {
     error.statusCode = 404;
     throw error;
   }
-  return [{ number: 1, applicationNumber: item.applicationNumber, applicant: [item.personalInformation?.firstName, item.personalInformation?.lastName, item.personalInformation?.grandfatherName].filter(Boolean).join(" "), phone: item.personalInformation?.phoneNumber || "", email: item.personalInformation?.email || "", program: item.trainingInformation?.trainingProgram || "", trainingType: item.trainingInformation?.trainingType || "", status: item.status || "PENDING", submitted: item.submittedAt ? new Date(item.submittedAt).toLocaleString("en-GB") : "" }];
+  return [{
+    number: 1,
+    applicationNumber: item.applicationNumber,
+    applicant: [item.personalInformation?.firstName, item.personalInformation?.lastName, item.personalInformation?.grandfatherName].filter(Boolean).join(" "),
+    firstName: item.personalInformation?.firstName || "",
+    lastName: item.personalInformation?.lastName || "",
+    grandfatherName: item.personalInformation?.grandfatherName || "",
+    gender: item.personalInformation?.gender || "",
+    age: item.personalInformation?.age || "",
+    phone: item.personalInformation?.phoneNumber || "",
+    email: item.personalInformation?.email || "",
+    subCity: item.personalInformation?.subCity || "",
+    woreda: item.personalInformation?.woreda || "",
+    address: item.personalInformation?.address || "",
+    institutionType: item.trainingInformation?.institutionType || "",
+    program: item.trainingInformation?.trainingProgram || "",
+    trainingType: item.trainingInformation?.trainingType || "",
+    trainingMode: item.trainingInformation?.trainingMode || "",
+    startMonth: item.trainingInformation?.trainingStartMonth || "",
+    endMonth: item.trainingInformation?.trainingEndMonth || "",
+    bankName: item.paymentInformation?.bankName || "",
+    status: item.status || "PENDING",
+    rejectionReason: item.rejectionReason || "",
+    submitted: item.submittedAt ? new Date(item.submittedAt).toLocaleString("en-GB") : ""
+  }];
 }
 
 function writeApplicationsPdf(rows, res, filename = "assessment-applications.pdf") {
@@ -284,12 +332,35 @@ function writeApplicationsPdf(rows, res, filename = "assessment-applications.pdf
 async function writeApplicationsExcel(rows, res, filename = "assessment-applications.xlsx") {
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet("Applications");
-  sheet.columns = [{ header: "No.", key: "number", width: 7 }, { header: "Application No.", key: "applicationNumber", width: 22 }, { header: "Applicant", key: "applicant", width: 32 }, { header: "Phone", key: "phone", width: 18 }, { header: "Email", key: "email", width: 30 }, { header: "Training Program", key: "program", width: 30 }, { header: "Training Type", key: "trainingType", width: 16 }, { header: "Status", key: "status", width: 12 }, { header: "Submitted", key: "submitted", width: 24 }];
+  sheet.columns = [
+    { header: "No.", key: "number", width: 7 },
+    { header: "Application No.", key: "applicationNumber", width: 22 },
+    { header: "First Name", key: "firstName", width: 16 },
+    { header: "Last Name", key: "lastName", width: 16 },
+    { header: "Grandfather Name", key: "grandfatherName", width: 18 },
+    { header: "Gender", key: "gender", width: 10 },
+    { header: "Age", key: "age", width: 8 },
+    { header: "Phone", key: "phone", width: 18 },
+    { header: "Email", key: "email", width: 30 },
+    { header: "Sub City", key: "subCity", width: 15 },
+    { header: "Woreda", key: "woreda", width: 12 },
+    { header: "Address", key: "address", width: 25 },
+    { header: "Institution Type", key: "institutionType", width: 16 },
+    { header: "Training Program", key: "program", width: 30 },
+    { header: "Training Type", key: "trainingType", width: 16 },
+    { header: "Training Mode", key: "trainingMode", width: 16 },
+    { header: "Start Month", key: "startMonth", width: 14 },
+    { header: "End Month", key: "endMonth", width: 14 },
+    { header: "Bank Name", key: "bankName", width: 25 },
+    { header: "Status", key: "status", width: 12 },
+    { header: "Rejection Reason", key: "rejectionReason", width: 30 },
+    { header: "Submitted", key: "submitted", width: 24 }
+  ];
   sheet.addRows(rows);
   sheet.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
   sheet.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0F88D2" } };
   sheet.views = [{ state: "frozen", ySplit: 1 }];
-  sheet.autoFilter = { from: "A1", to: "I1" };
+  sheet.autoFilter = { from: "A1", to: "V1" };
   res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
   res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
   await workbook.xlsx.write(res);
@@ -301,7 +372,43 @@ export async function exportApplicationsPdf(req, res, next) {
 }
 
 export async function exportApplicationsExcel(req, res, next) {
-  try { const workbook = new ExcelJS.Workbook(); const sheet = workbook.addWorksheet("Applications"); sheet.columns = [{ header: "No.", key: "number", width: 7 }, { header: "Application No.", key: "applicationNumber", width: 22 }, { header: "Applicant", key: "applicant", width: 32 }, { header: "Phone", key: "phone", width: 18 }, { header: "Email", key: "email", width: 30 }, { header: "Training Program", key: "program", width: 30 }, { header: "Training Type", key: "trainingType", width: 16 }, { header: "Status", key: "status", width: 12 }, { header: "Submitted", key: "submitted", width: 24 }]; sheet.addRows(await applicationExportRows(req.query)); sheet.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } }; sheet.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0F88D2" } }; sheet.views = [{ state: "frozen", ySplit: 1 }]; sheet.autoFilter = { from: "A1", to: "I1" }; res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"); res.setHeader("Content-Disposition", "attachment; filename=assessment-applications.xlsx"); await workbook.xlsx.write(res); res.end(); } catch (error) { next(error); }
+  try {
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet("Applications");
+    sheet.columns = [
+      { header: "No.", key: "number", width: 7 },
+      { header: "Application No.", key: "applicationNumber", width: 22 },
+      { header: "First Name", key: "firstName", width: 16 },
+      { header: "Last Name", key: "lastName", width: 16 },
+      { header: "Grandfather Name", key: "grandfatherName", width: 18 },
+      { header: "Gender", key: "gender", width: 10 },
+      { header: "Age", key: "age", width: 8 },
+      { header: "Phone", key: "phone", width: 18 },
+      { header: "Email", key: "email", width: 30 },
+      { header: "Sub City", key: "subCity", width: 15 },
+      { header: "Woreda", key: "woreda", width: 12 },
+      { header: "Address", key: "address", width: 25 },
+      { header: "Institution Type", key: "institutionType", width: 16 },
+      { header: "Training Program", key: "program", width: 30 },
+      { header: "Training Type", key: "trainingType", width: 16 },
+      { header: "Training Mode", key: "trainingMode", width: 16 },
+      { header: "Start Month", key: "startMonth", width: 14 },
+      { header: "End Month", key: "endMonth", width: 14 },
+      { header: "Bank Name", key: "bankName", width: 25 },
+      { header: "Status", key: "status", width: 12 },
+      { header: "Rejection Reason", key: "rejectionReason", width: 30 },
+      { header: "Submitted", key: "submitted", width: 24 }
+    ];
+    sheet.addRows(await applicationExportRows(req.query));
+    sheet.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
+    sheet.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0F88D2" } };
+    sheet.views = [{ state: "frozen", ySplit: 1 }];
+    sheet.autoFilter = { from: "A1", to: "V1" };
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", "attachment; filename=assessment-applications.xlsx");
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (error) { next(error); }
 }
 
 export async function exportApplicationPdf(req, res, next) {
