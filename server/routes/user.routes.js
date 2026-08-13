@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
-import { changePassword, createStudent, deleteStudent, listStudents, setStudentActive, studentDashboard, listOnlineStudents, listActivityLogs, updateStudent } from "../controllers/user.controller.js";
+import { changePassword, createStudent, deleteStudent, exportStudentRegistrationsExcel, exportStudentRegistrationsPdf, listStudents, setStudentActive, studentDashboard, listOnlineStudents, listActivityLogs, updateStudent } from "../controllers/user.controller.js";
 import { authorize, protect } from "../middlewares/auth.js";
 import { validate } from "../middlewares/validate.js";
 
@@ -24,6 +24,8 @@ const updateStudentSchema = z.object({
   })
 });
 router.get("/students", protect, authorize("ADMIN"), listStudents);
+router.get("/students/export/pdf", protect, authorize("ADMIN"), exportStudentRegistrationsPdf);
+router.get("/students/export/excel", protect, authorize("ADMIN"), exportStudentRegistrationsExcel);
 router.post("/students", protect, authorize("ADMIN"), validate(createStudentSchema), createStudent);
 router.put("/students/:id", protect, authorize("ADMIN"), validate(updateStudentSchema), updateStudent);
 router.delete("/students/:id", protect, authorize("ADMIN"), deleteStudent);

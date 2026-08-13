@@ -1,4 +1,6 @@
 import crypto from "crypto";
+import ExcelJS from "exceljs";
+import PDFDocument from "pdfkit";
 import { User } from "../models/User.js";
 import { ExamAttempt } from "../models/ExamAttempt.js";
 import { Answer } from "../models/Answer.js";
@@ -107,6 +109,55 @@ export async function listStudents(req, res, next) {
   } catch (error) {
     next(error);
   }
+}
+
+async function studentRegistrationRows(filters = {}) {
+  const query = { role: "STUDENT" };
+  if (filters.courseId) {
+    const course = await Course.findById(filters.courseId).select("courseName");
+    if (!course) return [];
+    query.trainingTaken = course.courseName;
+  }
+  if (filters.search) query.$or = [{ name: new RegExp(filters.search, "i") }, { email: new RegExp(filters.search, "i") }, { enrollmentNumber: new RegExp(filters.search, "i") }];
+  const students = await User.find(query).select("name enrollmentNumber email batchYear trainingTaken isActive createdAt").sort({ createdAt: -1 }).lean();
+  return students.map((student, index) => ({ number: index + 1, name: student.name || "", enrollmentNumber: student.enrollmentNumber || "", email: student.email || "", batchYear: student.batchYear || "", trainingTaken: student.trainingTaken || "", status: student.isActive ? "Active" : "Inactive", registeredAt: student.createdAt ? new Date(student.createdAt).toLocaleDateString("en-GB") : "" }));
+}
+
+export async function exportStudentRegistrationsPdf(req, res, next) {
+  try {
+    const rows = await studentRegistrationRows(req.query);
+    const doc = new PDFDocument({ margin: 36, size: "A4", layout: "landscape" });
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", "attachment; filename=student-registrations.pdf");
+    doc.pipe(res);
+    doc.fontSize(18).text("Student Registrations", { align: "center" });
+    doc.moveDown(0.3).fontSize(9).fillColor("#64748b").text(`Exported ${new Date().toLocaleString()} | ${rows.length} student${rows.length === 1 ? "" : "s"}`, { align: "center" });
+    doc.moveDown().fillColor("#0f172a");
+    rows.forEach((row) => {
+      if (doc.y > doc.page.height - 55) doc.addPage();
+      doc.fontSize(9).text(`${row.number}. ${row.name} | ${row.enrollmentNumber} | ${row.batchYear} | ${row.trainingTaken} | ${row.status} | Registered: ${row.registeredAt}`, { width: doc.page.width - 72 });
+      doc.moveDown(0.35);
+    });
+    if (!rows.length) doc.fontSize(11).text("No student registrations found.", { align: "center" });
+    doc.end();
+  } catch (error) { next(error); }
+}
+
+export async function exportStudentRegistrationsExcel(req, res, next) {
+  try {
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet("Student Registrations");
+    sheet.columns = [{ header: "No.", key: "number", width: 8 }, { header: "Full Name", key: "name", width: 30 }, { header: "Student ID", key: "enrollmentNumber", width: 20 }, { header: "Email", key: "email", width: 32 }, { header: "Batch Year", key: "batchYear", width: 14 }, { header: "Training Taken", key: "trainingTaken", width: 30 }, { header: "Status", key: "status", width: 12 }, { header: "Registered Date", key: "registeredAt", width: 18 }];
+    sheet.addRows(await studentRegistrationRows(req.query));
+    sheet.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
+    sheet.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0F88D2" } };
+    sheet.views = [{ state: "frozen", ySplit: 1 }];
+    sheet.autoFilter = { from: "A1", to: "H1" };
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", "attachment; filename=student-registrations.xlsx");
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (error) { next(error); }
 }
 
 export async function updateStudent(req, res, next) {

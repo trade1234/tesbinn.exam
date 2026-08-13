@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { AlertTriangle, Search, UserPlus, Copy, Check, KeyRound, Pencil, Trash2 } from "lucide-react";
+import { AlertTriangle, Search, UserPlus, Copy, Check, Download, KeyRound, Pencil, Trash2 } from "lucide-react";
 import DataTable from "../components/DataTable.jsx";
 import Modal from "../components/Modal.jsx";
-import { api } from "../services/api.js";
+import { api, downloadFile } from "../services/api.js";
 
 export default function Students() {
   const [rows, setRows] = useState([]);
@@ -30,6 +30,14 @@ export default function Students() {
     if (search) params.set("search", search);
     if (courseFilter) params.set("courseId", courseFilter);
     api.get(`/users/students?${params.toString()}`).then((res) => setRows(res.data));
+  }
+
+  function exportQuery() {
+    const params = new URLSearchParams();
+    if (search) params.set("search", search);
+    if (courseFilter) params.set("courseId", courseFilter);
+    const query = params.toString();
+    return query ? `?${query}` : "";
   }
 
   function loadCourses() {
@@ -148,9 +156,11 @@ export default function Students() {
           <h2 className="break-words text-2xl font-bold">Student Management</h2>
           <p className="break-words text-sm text-slate-500">Search, activate, deactivate, and add student accounts.</p>
         </div>
-        <button className="btn-primary w-full sm:w-auto" onClick={openModal}>
-          <UserPlus size={16} /> Add Student
-        </button>
+        <div className="grid w-full gap-2 sm:flex sm:w-auto">
+          <button className="btn-secondary" type="button" onClick={() => downloadFile(`/users/students/export/pdf${exportQuery()}`, "student-registrations.pdf")}><Download size={16} /> PDF</button>
+          <button className="btn-secondary" type="button" onClick={() => downloadFile(`/users/students/export/excel${exportQuery()}`, "student-registrations.xlsx")}><Download size={16} /> Excel</button>
+          <button className="btn-primary" onClick={openModal}><UserPlus size={16} /> Add Student</button>
+        </div>
       </div>
       <div className="grid gap-3 md:grid-cols-[minmax(240px,420px)_minmax(220px,320px)]">
         <label className="relative block w-full">
