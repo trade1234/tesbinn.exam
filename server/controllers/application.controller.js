@@ -275,6 +275,8 @@ async function applicationExportRows(filters = {}) {
     startMonth: item.trainingInformation?.trainingStartMonth || "",
     endMonth: item.trainingInformation?.trainingEndMonth || "",
     bankName: item.paymentInformation?.bankName || "",
+    agreementAccepted: item.agreementAccepted ? "Yes" : "No",
+    digitalSignature: item.digitalSignature || "",
     status: item.status || "PENDING",
     rejectionReason: item.rejectionReason || "",
     submitted: item.submittedAt ? new Date(item.submittedAt).toLocaleString("en-GB") : ""
@@ -309,6 +311,8 @@ async function applicationExportRowsById(id) {
     startMonth: item.trainingInformation?.trainingStartMonth || "",
     endMonth: item.trainingInformation?.trainingEndMonth || "",
     bankName: item.paymentInformation?.bankName || "",
+    agreementAccepted: item.agreementAccepted ? "Yes" : "No",
+    digitalSignature: item.digitalSignature || "",
     status: item.status || "PENDING",
     rejectionReason: item.rejectionReason || "",
     submitted: item.submittedAt ? new Date(item.submittedAt).toLocaleString("en-GB") : ""
@@ -352,6 +356,8 @@ async function writeApplicationsExcel(rows, res, filename = "assessment-applicat
     { header: "Start Month", key: "startMonth", width: 14 },
     { header: "End Month", key: "endMonth", width: 14 },
     { header: "Bank Name", key: "bankName", width: 25 },
+    { header: "Agreement Accepted", key: "agreementAccepted", width: 20 },
+    { header: "Digital Signature", key: "digitalSignature", width: 24 },
     { header: "Status", key: "status", width: 12 },
     { header: "Rejection Reason", key: "rejectionReason", width: 30 },
     { header: "Submitted", key: "submitted", width: 24 }
@@ -360,7 +366,7 @@ async function writeApplicationsExcel(rows, res, filename = "assessment-applicat
   sheet.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
   sheet.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0F88D2" } };
   sheet.views = [{ state: "frozen", ySplit: 1 }];
-  sheet.autoFilter = { from: "A1", to: "V1" };
+  sheet.autoFilter = { from: "A1", to: "X1" };
   res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
   res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
   await workbook.xlsx.write(res);
@@ -396,6 +402,8 @@ export async function exportApplicationsExcel(req, res, next) {
       { header: "End Month", key: "endMonth", width: 14 },
       { header: "Bank Name", key: "bankName", width: 25 },
       { header: "Status", key: "status", width: 12 },
+      { header: "Agreement Accepted", key: "agreementAccepted", width: 20 },
+      { header: "Digital Signature", key: "digitalSignature", width: 24 },
       { header: "Rejection Reason", key: "rejectionReason", width: 30 },
       { header: "Submitted", key: "submitted", width: 24 }
     ];
@@ -403,7 +411,7 @@ export async function exportApplicationsExcel(req, res, next) {
     sheet.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
     sheet.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0F88D2" } };
     sheet.views = [{ state: "frozen", ySplit: 1 }];
-    sheet.autoFilter = { from: "A1", to: "V1" };
+    sheet.autoFilter = { from: "A1", to: "X1" };
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     res.setHeader("Content-Disposition", "attachment; filename=assessment-applications.xlsx");
     await workbook.xlsx.write(res);
