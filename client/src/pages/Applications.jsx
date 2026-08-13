@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { Eye, FileCheck2, GraduationCap, Printer, Search, UserRound, XCircle } from "lucide-react";
+import { Download, Eye, FileCheck2, GraduationCap, Printer, Search, UserRound, XCircle } from "lucide-react";
 import DataTable from "../components/DataTable.jsx";
 import Modal from "../components/Modal.jsx";
-import { api, assetUrl } from "../services/api.js";
+import { api, assetUrl, downloadFile } from "../services/api.js";
 
 function fullName(person = {}) {
   return [person.firstName, person.lastName, person.grandfatherName].filter(Boolean).join(" ") || "Not provided";
@@ -287,6 +287,8 @@ export default function Applications() {
     return monthMatches && programMatches;
   }), [rows, filterMonth, filterProgram]);
 
+  function applicationExportQuery() { const params = new URLSearchParams(); if (search) params.set("search", search); if (filterMonth) params.set("month", filterMonth); if (filterProgram) params.set("program", filterProgram); return params.size ? `?${params}` : ""; }
+
   const stats = useMemo(() => [
     { label: "Total Applications", value: filteredRows.length },
     { label: "Coffee Cupping", value: filteredRows.filter((row) => row.trainingInformation?.trainingProgram === "Coffee Cupping").length },
@@ -340,6 +342,7 @@ export default function Applications() {
           <h2 className="break-words text-2xl font-bold">Assessment Applications</h2>
           <p className="break-words text-sm text-slate-500 dark:text-slate-400">View online competency assessment registration submissions.</p>
         </div>
+        <div className="grid w-full gap-2 sm:flex sm:w-auto"><button className="btn-secondary" type="button" onClick={() => downloadFile(`/applications/export/pdf${applicationExportQuery()}`, "assessment-applications.pdf")}><Download size={16} /> PDF</button><button className="btn-primary" type="button" onClick={() => downloadFile(`/applications/export/excel${applicationExportQuery()}`, "assessment-applications.xlsx")}><Download size={16} /> Excel</button></div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">

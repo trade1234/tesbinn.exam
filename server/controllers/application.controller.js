@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { extname } from "node:path";
 import { z } from "zod";
+import ExcelJS from "exceljs";
+import PDFDocument from "pdfkit";
 import { Application } from "../models/Application.js";
 
 const maxStoredImageSize = 2 * 1024 * 1024;
@@ -244,6 +246,23 @@ export async function deleteApplication(req, res, next) {
   } catch (error) {
     next(error);
   }
+}
+
+async function applicationExportRows(filters = {}) {
+  const query = {};
+  if (filters.search?.trim()) { const pattern = new RegExp(filters.search.trim(), "i"); query.$or = [{ applicationNumber: pattern }, { "personalInformation.firstName": pattern }, { "personalInformation.lastName": pattern }, { "personalInformation.grandfatherName": pattern }, { "personalInformation.phoneNumber": pattern }]; }
+  if (filters.program) query["trainingInformation.trainingProgram"] = filters.program;
+  if (/^\d{4}-\d{2}$/.test(filters.month || "")) { const start = new Date(`${filters.month}-01T00:00:00.000Z`); query.submittedAt = { $gte: start, $lt: new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 1)) }; }
+  const items = await Application.find(query).select("-passportPhoto -fayadaDigitalId -paymentScreenshot").sort({ submittedAt: -1 }).lean();
+  return items.map((item, index) => ({ number: index + 1, applicationNumber: item.applicationNumber, applicant: [item.personalInformation?.firstName, item.personalInformation?.lastName, item.personalInformation?.grandfatherName].filter(Boolean).join(" "), phone: item.personalInformation?.phoneNumber || "", email: item.personalInformation?.email || "", program: item.trainingInformation?.trainingProgram || "", trainingType: item.trainingInformation?.trainingType || "", status: item.status || "PENDING", submitted: item.submittedAt ? new Date(item.submittedAt).toLocaleString("en-GB") : "" }));
+}
+
+export async function exportApplicationsPdf(req, res, next) {
+  try { const rows = await applicationExportRows(req.query); const doc = new PDFDocument({ margin: 36, size: "A4", layout: "landscape" }); res.setHeader("Content-Type", "application/pdf"); res.setHeader("Content-Disposition", "attachment; filename=assessment-applications.pdf"); doc.pipe(res); doc.fontSize(18).text("Assessment Applications", { align: "center" }).moveDown(); rows.forEach((row) => { if (doc.y > doc.page.height - 55) doc.addPage(); doc.fontSize(9).text(`${row.number}. ${row.applicationNumber} | ${row.applicant} | ${row.phone} | ${row.program} | ${row.trainingType} | ${row.status} | ${row.submitted}`); }); if (!rows.length) doc.text("No assessment applications found.", { align: "center" }); doc.end(); } catch (error) { next(error); }
+}
+
+export async function exportApplicationsExcel(req, res, next) {
+  try { const workbook = new ExcelJS.Workbook(); const sheet = workbook.addWorksheet("Applications"); sheet.columns = [{ header: "No.", key: "number", width: 7 }, { header: "Application No.", key: "applicationNumber", width: 22 }, { header: "Applicant", key: "applicant", width: 32 }, { header: "Phone", key: "phone", width: 18 }, { header: "Email", key: "email", width: 30 }, { header: "Training Program", key: "program", width: 30 }, { header: "Training Type", key: "trainingType", width: 16 }, { header: "Status", key: "status", width: 12 }, { header: "Submitted", key: "submitted", width: 24 }]; sheet.addRows(await applicationExportRows(req.query)); sheet.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } }; sheet.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0F88D2" } }; sheet.views = [{ state: "frozen", ySplit: 1 }]; sheet.autoFilter = { from: "A1", to: "I1" }; res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"); res.setHeader("Content-Disposition", "attachment; filename=assessment-applications.xlsx"); await workbook.xlsx.write(res); res.end(); } catch (error) { next(error); }
 }
 
 export async function rejectApplication(req, res, next) {
