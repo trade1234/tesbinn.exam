@@ -1,7 +1,7 @@
 import { Router } from "express";
 import multer from "multer";
 import { authorize, protect } from "../middlewares/auth.js";
-import { createApplication, exportApplicationsExcel, exportApplicationsPdf, getApplicationByNumber, listApplications, rejectApplication, serveApplicationUpload } from "../controllers/application.controller.js";
+import { createApplication, exportApplicationExcel, exportApplicationPdf, exportApplicationsExcel, exportApplicationsPdf, getApplicationByNumber, listApplications, rejectApplication, serveApplicationUpload } from "../controllers/application.controller.js";
 
 const allowedTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
 const maxRawImageSize = 20 * 1024 * 1024;
@@ -34,6 +34,8 @@ const router = Router();
 router.get("/", protect, authorize("ADMIN"), listApplications);
 router.get("/export/pdf", protect, authorize("ADMIN"), exportApplicationsPdf);
 router.get("/export/excel", protect, authorize("ADMIN"), exportApplicationsExcel);
+router.get("/:id/export/pdf", protect, authorize("ADMIN"), exportApplicationPdf);
+router.get("/:id/export/excel", protect, authorize("ADMIN"), exportApplicationExcel);
 router.post("/", handleApplicationUpload, createApplication);
 router.get("/uploads/:filename", serveApplicationUpload);
 router.patch("/:id/reject", protect, authorize("ADMIN"), rejectApplication);

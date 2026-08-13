@@ -327,10 +327,10 @@ export default function Applications() {
           <button className="btn-secondary" type="button" onClick={() => printApplication(row)}>
             <Printer size={14} /> Print
           </button>
-          <button className="btn-secondary" type="button" title="Export this application as PDF" onClick={() => downloadFile(`/applications/export/pdf?search=${encodeURIComponent(row.applicationNumber)}`, `${row.applicationNumber}-application.pdf`)}>
+          <button className="btn-secondary" type="button" title="Export this application as PDF" onClick={() => downloadFile(`/applications/${row._id}/export/pdf`, `${row.applicationNumber}-application.pdf`).catch((err) => setError(err.message))}>
             <Download size={14} /> PDF
           </button>
-          <button className="btn-secondary" type="button" title="Export this application as Excel" onClick={() => downloadFile(`/applications/export/excel?search=${encodeURIComponent(row.applicationNumber)}`, `${row.applicationNumber}-application.xlsx`)}>
+          <button className="btn-secondary" type="button" title="Export this application as Excel" onClick={() => downloadFile(`/applications/${row._id}/export/excel`, `${row.applicationNumber}-application.xlsx`).catch((err) => setError(err.message))}>
             <Download size={14} /> Excel
           </button>
           <button className="btn-secondary border-red-200 text-red-700 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950/30" type="button" disabled={row.status === "REJECTED"} onClick={() => { setRejectTarget(row); setRejectReason(""); }}>

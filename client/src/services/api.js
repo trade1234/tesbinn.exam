@@ -48,13 +48,22 @@ api.interceptors.response.use(
   }
 );
 
-export function downloadFile(path, filename) {
-  return api.get(path, { responseType: "blob" }).then((response) => {
+export async function downloadFile(path, filename) {
+  try {
+    const response = await api.get(path, { responseType: "blob" });
     const url = URL.createObjectURL(new Blob([response.data]));
     const link = document.createElement("a");
     link.href = url;
     link.download = filename;
+    document.body.appendChild(link);
     link.click();
-    URL.revokeObjectURL(url);
-  });
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  } catch (error) {
+    let message = "File export failed. Please try again.";
+    if (error.response?.data instanceof Blob) {
+      try { message = JSON.parse(await error.response.data.text()).message || message; } catch (_error) { /* use fallback */ }
+    } else if (error.response?.data?.message) message = error.response.data.message;
+    throw new Error(message);
+  }
 }

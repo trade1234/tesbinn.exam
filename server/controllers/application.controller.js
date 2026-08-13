@@ -257,12 +257,59 @@ async function applicationExportRows(filters = {}) {
   return items.map((item, index) => ({ number: index + 1, applicationNumber: item.applicationNumber, applicant: [item.personalInformation?.firstName, item.personalInformation?.lastName, item.personalInformation?.grandfatherName].filter(Boolean).join(" "), phone: item.personalInformation?.phoneNumber || "", email: item.personalInformation?.email || "", program: item.trainingInformation?.trainingProgram || "", trainingType: item.trainingInformation?.trainingType || "", status: item.status || "PENDING", submitted: item.submittedAt ? new Date(item.submittedAt).toLocaleString("en-GB") : "" }));
 }
 
+async function applicationExportRowsById(id) {
+  const item = await Application.findById(id).select("-passportPhoto -fayadaDigitalId -paymentScreenshot").lean();
+  if (!item) {
+    const error = new Error("Application not found");
+    error.statusCode = 404;
+    throw error;
+  }
+  return [{ number: 1, applicationNumber: item.applicationNumber, applicant: [item.personalInformation?.firstName, item.personalInformation?.lastName, item.personalInformation?.grandfatherName].filter(Boolean).join(" "), phone: item.personalInformation?.phoneNumber || "", email: item.personalInformation?.email || "", program: item.trainingInformation?.trainingProgram || "", trainingType: item.trainingInformation?.trainingType || "", status: item.status || "PENDING", submitted: item.submittedAt ? new Date(item.submittedAt).toLocaleString("en-GB") : "" }];
+}
+
+function writeApplicationsPdf(rows, res, filename = "assessment-applications.pdf") {
+  const doc = new PDFDocument({ margin: 36, size: "A4", layout: "landscape" });
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+  doc.pipe(res);
+  doc.fontSize(18).text("Assessment Applications", { align: "center" }).moveDown();
+  rows.forEach((row) => {
+    if (doc.y > doc.page.height - 55) doc.addPage();
+    doc.fontSize(9).text(`${row.number}. ${row.applicationNumber} | ${row.applicant} | ${row.phone} | ${row.program} | ${row.trainingType} | ${row.status} | ${row.submitted}`);
+  });
+  if (!rows.length) doc.text("No assessment applications found.", { align: "center" });
+  doc.end();
+}
+
+async function writeApplicationsExcel(rows, res, filename = "assessment-applications.xlsx") {
+  const workbook = new ExcelJS.Workbook();
+  const sheet = workbook.addWorksheet("Applications");
+  sheet.columns = [{ header: "No.", key: "number", width: 7 }, { header: "Application No.", key: "applicationNumber", width: 22 }, { header: "Applicant", key: "applicant", width: 32 }, { header: "Phone", key: "phone", width: 18 }, { header: "Email", key: "email", width: 30 }, { header: "Training Program", key: "program", width: 30 }, { header: "Training Type", key: "trainingType", width: 16 }, { header: "Status", key: "status", width: 12 }, { header: "Submitted", key: "submitted", width: 24 }];
+  sheet.addRows(rows);
+  sheet.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
+  sheet.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0F88D2" } };
+  sheet.views = [{ state: "frozen", ySplit: 1 }];
+  sheet.autoFilter = { from: "A1", to: "I1" };
+  res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+  await workbook.xlsx.write(res);
+  res.end();
+}
+
 export async function exportApplicationsPdf(req, res, next) {
   try { const rows = await applicationExportRows(req.query); const doc = new PDFDocument({ margin: 36, size: "A4", layout: "landscape" }); res.setHeader("Content-Type", "application/pdf"); res.setHeader("Content-Disposition", "attachment; filename=assessment-applications.pdf"); doc.pipe(res); doc.fontSize(18).text("Assessment Applications", { align: "center" }).moveDown(); rows.forEach((row) => { if (doc.y > doc.page.height - 55) doc.addPage(); doc.fontSize(9).text(`${row.number}. ${row.applicationNumber} | ${row.applicant} | ${row.phone} | ${row.program} | ${row.trainingType} | ${row.status} | ${row.submitted}`); }); if (!rows.length) doc.text("No assessment applications found.", { align: "center" }); doc.end(); } catch (error) { next(error); }
 }
 
 export async function exportApplicationsExcel(req, res, next) {
   try { const workbook = new ExcelJS.Workbook(); const sheet = workbook.addWorksheet("Applications"); sheet.columns = [{ header: "No.", key: "number", width: 7 }, { header: "Application No.", key: "applicationNumber", width: 22 }, { header: "Applicant", key: "applicant", width: 32 }, { header: "Phone", key: "phone", width: 18 }, { header: "Email", key: "email", width: 30 }, { header: "Training Program", key: "program", width: 30 }, { header: "Training Type", key: "trainingType", width: 16 }, { header: "Status", key: "status", width: 12 }, { header: "Submitted", key: "submitted", width: 24 }]; sheet.addRows(await applicationExportRows(req.query)); sheet.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } }; sheet.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0F88D2" } }; sheet.views = [{ state: "frozen", ySplit: 1 }]; sheet.autoFilter = { from: "A1", to: "I1" }; res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"); res.setHeader("Content-Disposition", "attachment; filename=assessment-applications.xlsx"); await workbook.xlsx.write(res); res.end(); } catch (error) { next(error); }
+}
+
+export async function exportApplicationPdf(req, res, next) {
+  try { const rows = await applicationExportRowsById(req.params.id); writeApplicationsPdf(rows, res, `${rows[0].applicationNumber}-application.pdf`); } catch (error) { next(error); }
+}
+
+export async function exportApplicationExcel(req, res, next) {
+  try { const rows = await applicationExportRowsById(req.params.id); await writeApplicationsExcel(rows, res, `${rows[0].applicationNumber}-application.xlsx`); } catch (error) { next(error); }
 }
 
 export async function rejectApplication(req, res, next) {
