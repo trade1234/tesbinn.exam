@@ -348,7 +348,24 @@ export default function Applications() {
           <h2 className="break-words text-2xl font-bold">Assessment Applications</h2>
           <p className="break-words text-sm text-slate-500 dark:text-slate-400">View online competency assessment registration submissions.</p>
         </div>
-        <div className="grid w-full gap-2 sm:flex sm:w-auto"><button className="btn-secondary" type="button" onClick={() => downloadFile(`/applications/export/pdf${applicationExportQuery()}`, "assessment-applications.pdf")}><Download size={16} /> PDF</button><button className="btn-primary" type="button" onClick={() => downloadFile(`/applications/export/excel${applicationExportQuery()}`, "assessment-applications.xlsx")}><Download size={16} /> Excel</button></div>
+        <div className="grid w-full gap-2 sm:flex sm:w-auto">
+          <button className="btn-secondary" type="button" onClick={() => downloadFile("/applications/export/pdf", "all-applications.pdf")}>
+            <Download size={16} /> Export All (PDF)
+          </button>
+          <button className="btn-primary" type="button" onClick={() => downloadFile("/applications/export/excel", "all-applications.xlsx")}>
+            <Download size={16} /> Export All (Excel)
+          </button>
+          {(search || filterMonth || filterProgram) && (
+            <>
+              <button className="btn-secondary border-dashed" type="button" onClick={() => downloadFile(`/applications/export/pdf${applicationExportQuery()}`, "filtered-applications.pdf")}>
+                <Download size={16} /> Export Filtered (PDF)
+              </button>
+              <button className="btn-secondary border-dashed" type="button" onClick={() => downloadFile(`/applications/export/excel${applicationExportQuery()}`, "filtered-applications.xlsx")}>
+                <Download size={16} /> Export Filtered (Excel)
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">

@@ -353,7 +353,11 @@ export async function serveApplicationUpload(req, res, next) {
         { "fayadaDigitalId.filename": filename },
         { "paymentScreenshot.filename": filename }
       ]
-    }).select("+passportPhoto.data +fayadaDigitalId.data +paymentScreenshot.data");
+    }).select(
+      "passportPhoto.filename passportPhoto.mimetype passportPhoto.data " +
+      "fayadaDigitalId.filename fayadaDigitalId.mimetype fayadaDigitalId.data " +
+      "paymentScreenshot.filename paymentScreenshot.mimetype paymentScreenshot.data"
+    );
 
     const file = findStoredFile(application, filename);
     const buffer = storedBuffer(file?.data);
