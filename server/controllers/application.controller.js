@@ -251,12 +251,18 @@ export async function deleteApplication(req, res, next) {
   }
 }
 
+const APPLICATION_EXPORT_FIELDS = [
+  "applicationNumber personalInformation trainingInformation paymentInformation",
+  "agreementAccepted digitalSignature submittedAt status rejectionReason",
+  "rejectedAt rejectedBy createdAt updatedAt"
+].join(" ");
+
 async function applicationExportRows(filters = {}) {
   const query = {};
   if (filters.search?.trim()) { const pattern = new RegExp(filters.search.trim(), "i"); query.$or = [{ applicationNumber: pattern }, { "personalInformation.firstName": pattern }, { "personalInformation.lastName": pattern }, { "personalInformation.grandfatherName": pattern }, { "personalInformation.phoneNumber": pattern }, { "paymentInformation.fsNumber": pattern }]; }
   if (filters.program) query["trainingInformation.trainingProgram"] = filters.program;
   if (/^\d{4}-\d{2}$/.test(filters.month || "")) { const start = new Date(`${filters.month}-01T00:00:00.000Z`); query.submittedAt = { $gte: start, $lt: new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 1)) }; }
-  const items = await Application.find(query).select("-passportPhoto -fayadaDigitalId -paymentScreenshot").sort({ submittedAt: -1 }).lean();
+  const items = await Application.find(query).select(APPLICATION_EXPORT_FIELDS).sort({ submittedAt: -1 }).lean();
   return items.map((item, index) => ({
     number: index + 1,
     applicationNumber: item.applicationNumber,
@@ -283,12 +289,16 @@ async function applicationExportRows(filters = {}) {
     digitalSignature: item.digitalSignature || "",
     status: item.status || "PENDING",
     rejectionReason: item.rejectionReason || "",
-    submitted: item.submittedAt ? new Date(item.submittedAt).toLocaleString("en-GB") : ""
+    rejectedAt: item.rejectedAt ? new Date(item.rejectedAt).toLocaleString("en-GB") : "",
+    rejectedBy: item.rejectedBy?.toString() || "",
+    submitted: item.submittedAt ? new Date(item.submittedAt).toLocaleString("en-GB") : "",
+    createdAt: item.createdAt ? new Date(item.createdAt).toLocaleString("en-GB") : "",
+    updatedAt: item.updatedAt ? new Date(item.updatedAt).toLocaleString("en-GB") : ""
   }));
 }
 
 async function applicationExportRowsById(id) {
-  const item = await Application.findById(id).select("-passportPhoto -fayadaDigitalId -paymentScreenshot").lean();
+  const item = await Application.findById(id).select(APPLICATION_EXPORT_FIELDS).lean();
   if (!item) {
     const error = new Error("Application not found");
     error.statusCode = 404;
@@ -320,7 +330,11 @@ async function applicationExportRowsById(id) {
     digitalSignature: item.digitalSignature || "",
     status: item.status || "PENDING",
     rejectionReason: item.rejectionReason || "",
-    submitted: item.submittedAt ? new Date(item.submittedAt).toLocaleString("en-GB") : ""
+    rejectedAt: item.rejectedAt ? new Date(item.rejectedAt).toLocaleString("en-GB") : "",
+    rejectedBy: item.rejectedBy?.toString() || "",
+    submitted: item.submittedAt ? new Date(item.submittedAt).toLocaleString("en-GB") : "",
+    createdAt: item.createdAt ? new Date(item.createdAt).toLocaleString("en-GB") : "",
+    updatedAt: item.updatedAt ? new Date(item.updatedAt).toLocaleString("en-GB") : ""
   }];
 }
 
@@ -366,13 +380,17 @@ async function writeApplicationsExcel(rows, res, filename = "assessment-applicat
     { header: "Digital Signature", key: "digitalSignature", width: 24 },
     { header: "Status", key: "status", width: 12 },
     { header: "Rejection Reason", key: "rejectionReason", width: 30 },
-    { header: "Submitted", key: "submitted", width: 24 }
+    { header: "Rejected At", key: "rejectedAt", width: 24 },
+    { header: "Rejected By (Admin ID)", key: "rejectedBy", width: 26 },
+    { header: "Submitted", key: "submitted", width: 24 },
+    { header: "Created At", key: "createdAt", width: 24 },
+    { header: "Updated At", key: "updatedAt", width: 24 }
   ];
   sheet.addRows(rows);
   sheet.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
   sheet.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0F88D2" } };
   sheet.views = [{ state: "frozen", ySplit: 1 }];
-  sheet.autoFilter = { from: "A1", to: "Y1" };
+  sheet.autoFilter = { from: "A1", to: "AC1" };
   res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
   res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
   await workbook.xlsx.write(res);
@@ -412,13 +430,17 @@ export async function exportApplicationsExcel(req, res, next) {
       { header: "Agreement Accepted", key: "agreementAccepted", width: 20 },
       { header: "Digital Signature", key: "digitalSignature", width: 24 },
       { header: "Rejection Reason", key: "rejectionReason", width: 30 },
-      { header: "Submitted", key: "submitted", width: 24 }
+      { header: "Rejected At", key: "rejectedAt", width: 24 },
+      { header: "Rejected By (Admin ID)", key: "rejectedBy", width: 26 },
+      { header: "Submitted", key: "submitted", width: 24 },
+      { header: "Created At", key: "createdAt", width: 24 },
+      { header: "Updated At", key: "updatedAt", width: 24 }
     ];
     sheet.addRows(await applicationExportRows(req.query));
     sheet.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
     sheet.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0F88D2" } };
     sheet.views = [{ state: "frozen", ySplit: 1 }];
-    sheet.autoFilter = { from: "A1", to: "Y1" };
+    sheet.autoFilter = { from: "A1", to: "AC1" };
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     res.setHeader("Content-Disposition", "attachment; filename=assessment-applications.xlsx");
     await workbook.xlsx.write(res);

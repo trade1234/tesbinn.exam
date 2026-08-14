@@ -329,9 +329,6 @@ export default function Applications() {
           <button className="btn-secondary" type="button" onClick={() => printApplication(row)}>
             <Printer size={14} /> Print
           </button>
-          <button className="btn-secondary" type="button" title="Export this application as PDF" onClick={() => downloadFile(`/applications/${row._id}/export/pdf`, `${row.applicationNumber}-application.pdf`).catch((err) => setError(err.message))}>
-            <Download size={14} /> PDF
-          </button>
           <button className="btn-secondary" type="button" title="Export this application as Excel" onClick={() => downloadFile(`/applications/${row._id}/export/excel`, `${row.applicationNumber}-application.xlsx`).catch((err) => setError(err.message))}>
             <Download size={14} /> Excel
           </button>
