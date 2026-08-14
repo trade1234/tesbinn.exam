@@ -19,7 +19,7 @@ const fieldGroups = [
   [
     "institutionType", "trainingStartMonth", "trainingEndMonth", "trainingMode", "trainingProgram", "trainingType"
   ],
-  ["paymentBank", "paymentScreenshot"],
+  ["paymentBank", "fsNumber", "paymentScreenshot"],
   ["agreementAccepted"]
 ];
 
@@ -305,6 +305,7 @@ export default function ApplicationRegistration() {
     ["Training Program", values.trainingProgram],
     ["Training Type", values.trainingType],
     ["Payment Bank", values.paymentBank],
+    ["Transaction Number (FS NO.)", values.fsNumber],
     ["Payment Screenshot", paymentScreenshotStatus, { mobileHidden: true }]
   ], [values, photoStatus, fayadaStatus, paymentScreenshotStatus]);
 
@@ -429,6 +430,13 @@ export default function ApplicationRegistration() {
                     <option value="">Select bank</option>
                     {ethiopianBanks.map((bank) => <option key={bank} value={bank}>{bank}</option>)}
                   </SelectField>
+                  <TextField
+                    label="Transaction Number (FS NO.)"
+                    span="half"
+                    error={errors.fsNumber}
+                    registerProps={register("fsNumber", { required: "FS NO. is required" })}
+                    placeholder="Enter FS NO."
+                  />
                   <Field label="Upload Payment Screenshot" error={errors.paymentScreenshot} span="half"><input className={`form-control ${errors.paymentScreenshot ? "is-invalid" : ""}`} type="file" accept="image/png,image/jpeg,image/webp" {...register("paymentScreenshot", { validate: validateUpload })} /></Field>
                 </div>
               )}

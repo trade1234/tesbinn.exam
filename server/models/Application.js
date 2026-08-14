@@ -42,7 +42,8 @@ const applicationSchema = new mongoose.Schema(
       data: { type: Buffer, select: false }
     },
     paymentInformation: {
-      bankName: { type: String, required: true, trim: true }
+      bankName: { type: String, required: true, trim: true },
+      fsNumber: { type: String, trim: true, default: "" }
     },
     paymentScreenshot: {
       filename: { type: String, required: true },

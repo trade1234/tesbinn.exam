@@ -48,6 +48,7 @@ function printApplication(application) {
     ]],
     ["Payment Information", [
       ["Payment Bank", payment.bankName],
+      ["Transaction Number (FS NO.)", payment.fsNumber],
       ["Payment Screenshot", application.paymentScreenshot?.originalName]
     ]]
   ];
@@ -314,6 +315,7 @@ export default function Applications() {
     },
     { key: "trainingProgram", label: "Training Program", render: (row) => row.trainingInformation?.trainingProgram || "Not provided" },
     { key: "trainingType", label: "Training Type", render: (row) => row.trainingInformation?.trainingType || "Not provided" },
+    { key: "fsNumber", label: "FS NO.", render: (row) => row.paymentInformation?.fsNumber || "-" },
     { key: "submittedAt", label: "Submitted", render: (row) => formatDate(row.submittedAt || row.createdAt) },
     { key: "status", label: "Status", render: (row) => <span className={`rounded-full px-3 py-1 text-xs font-bold ${row.status === "REJECTED" ? "bg-red-100 text-red-700" : row.status === "APPROVED" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>{row.status || "PENDING"}</span> },
     {
@@ -456,6 +458,7 @@ export default function Applications() {
 
             <DetailSection title="Payment Information" icon={FileCheck2} items={[
               ["Payment Bank", selected.paymentInformation?.bankName],
+              ["Transaction Number (FS NO.)", selected.paymentInformation?.fsNumber],
               ["Payment Screenshot", selected.paymentScreenshot?.originalName]
             ]} />
             <DocumentImageSection title="Payment Screenshot" image={selected.paymentScreenshot} alt="Payment screenshot" />

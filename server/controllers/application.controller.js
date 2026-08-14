@@ -51,6 +51,7 @@ const applicationSchema = z.object({
   trainingProgram: z.enum(["Coffee Cupping", "Barista", "Digital Marketing", "International Import Export"]),
   trainingType: z.enum(["Formal", "Non-formal", "VIP", "Nights"]),
   paymentBank: z.enum(ethiopianBanks),
+  fsNumber: z.string().trim().min(1, "FS NO. is required").max(100, "FS NO. is too long"),
   agreementAccepted: z.coerce.boolean().refine((value) => value === true, "Confirmation is required"),
   digitalSignature: z.string().trim().optional()
 }).superRefine((data, ctx) => {
@@ -177,7 +178,8 @@ export async function createApplication(req, res, next) {
         trainingType: parsed.trainingType,
       },
       paymentInformation: {
-        bankName: parsed.paymentBank
+        bankName: parsed.paymentBank,
+        fsNumber: parsed.fsNumber
       },
       passportPhoto: passportPhoto ? buildUploadDocument(passportPhoto) : undefined,
       fayadaDigitalId: buildUploadDocument(fayadaDigitalId),
@@ -222,6 +224,7 @@ export async function listApplications(req, res, next) {
         { "personalInformation.grandfatherName": pattern },
         { "personalInformation.phoneNumber": pattern },
         { "personalInformation.email": pattern },
+        { "paymentInformation.fsNumber": pattern },
         { "trainingInformation.trainingProgram": pattern }
       ];
     }
@@ -250,7 +253,7 @@ export async function deleteApplication(req, res, next) {
 
 async function applicationExportRows(filters = {}) {
   const query = {};
-  if (filters.search?.trim()) { const pattern = new RegExp(filters.search.trim(), "i"); query.$or = [{ applicationNumber: pattern }, { "personalInformation.firstName": pattern }, { "personalInformation.lastName": pattern }, { "personalInformation.grandfatherName": pattern }, { "personalInformation.phoneNumber": pattern }]; }
+  if (filters.search?.trim()) { const pattern = new RegExp(filters.search.trim(), "i"); query.$or = [{ applicationNumber: pattern }, { "personalInformation.firstName": pattern }, { "personalInformation.lastName": pattern }, { "personalInformation.grandfatherName": pattern }, { "personalInformation.phoneNumber": pattern }, { "paymentInformation.fsNumber": pattern }]; }
   if (filters.program) query["trainingInformation.trainingProgram"] = filters.program;
   if (/^\d{4}-\d{2}$/.test(filters.month || "")) { const start = new Date(`${filters.month}-01T00:00:00.000Z`); query.submittedAt = { $gte: start, $lt: new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 1)) }; }
   const items = await Application.find(query).select("-passportPhoto -fayadaDigitalId -paymentScreenshot").sort({ submittedAt: -1 }).lean();
@@ -275,6 +278,7 @@ async function applicationExportRows(filters = {}) {
     startMonth: item.trainingInformation?.trainingStartMonth || "",
     endMonth: item.trainingInformation?.trainingEndMonth || "",
     bankName: item.paymentInformation?.bankName || "",
+    fsNumber: item.paymentInformation?.fsNumber || "",
     agreementAccepted: item.agreementAccepted ? "Yes" : "No",
     digitalSignature: item.digitalSignature || "",
     status: item.status || "PENDING",
@@ -311,6 +315,7 @@ async function applicationExportRowsById(id) {
     startMonth: item.trainingInformation?.trainingStartMonth || "",
     endMonth: item.trainingInformation?.trainingEndMonth || "",
     bankName: item.paymentInformation?.bankName || "",
+    fsNumber: item.paymentInformation?.fsNumber || "",
     agreementAccepted: item.agreementAccepted ? "Yes" : "No",
     digitalSignature: item.digitalSignature || "",
     status: item.status || "PENDING",
@@ -327,7 +332,7 @@ function writeApplicationsPdf(rows, res, filename = "assessment-applications.pdf
   doc.fontSize(18).text("Assessment Applications", { align: "center" }).moveDown();
   rows.forEach((row) => {
     if (doc.y > doc.page.height - 55) doc.addPage();
-    doc.fontSize(9).text(`${row.number}. ${row.applicationNumber} | ${row.applicant} | ${row.phone} | ${row.program} | ${row.trainingType} | ${row.status} | ${row.submitted}`);
+    doc.fontSize(9).text(`${row.number}. ${row.applicationNumber} | ${row.applicant} | ${row.phone} | ${row.program} | FS NO.: ${row.fsNumber || "-"} | ${row.trainingType} | ${row.status} | ${row.submitted}`);
   });
   if (!rows.length) doc.text("No assessment applications found.", { align: "center" });
   doc.end();
@@ -356,6 +361,7 @@ async function writeApplicationsExcel(rows, res, filename = "assessment-applicat
     { header: "Start Month", key: "startMonth", width: 14 },
     { header: "End Month", key: "endMonth", width: 14 },
     { header: "Bank Name", key: "bankName", width: 25 },
+    { header: "FS NO.", key: "fsNumber", width: 22 },
     { header: "Agreement Accepted", key: "agreementAccepted", width: 20 },
     { header: "Digital Signature", key: "digitalSignature", width: 24 },
     { header: "Status", key: "status", width: 12 },
@@ -366,7 +372,7 @@ async function writeApplicationsExcel(rows, res, filename = "assessment-applicat
   sheet.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
   sheet.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0F88D2" } };
   sheet.views = [{ state: "frozen", ySplit: 1 }];
-  sheet.autoFilter = { from: "A1", to: "X1" };
+  sheet.autoFilter = { from: "A1", to: "Y1" };
   res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
   res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
   await workbook.xlsx.write(res);
@@ -374,7 +380,7 @@ async function writeApplicationsExcel(rows, res, filename = "assessment-applicat
 }
 
 export async function exportApplicationsPdf(req, res, next) {
-  try { const rows = await applicationExportRows(req.query); const doc = new PDFDocument({ margin: 36, size: "A4", layout: "landscape" }); res.setHeader("Content-Type", "application/pdf"); res.setHeader("Content-Disposition", "attachment; filename=assessment-applications.pdf"); doc.pipe(res); doc.fontSize(18).text("Assessment Applications", { align: "center" }).moveDown(); rows.forEach((row) => { if (doc.y > doc.page.height - 55) doc.addPage(); doc.fontSize(9).text(`${row.number}. ${row.applicationNumber} | ${row.applicant} | ${row.phone} | ${row.program} | ${row.trainingType} | ${row.status} | ${row.submitted}`); }); if (!rows.length) doc.text("No assessment applications found.", { align: "center" }); doc.end(); } catch (error) { next(error); }
+  try { const rows = await applicationExportRows(req.query); const doc = new PDFDocument({ margin: 36, size: "A4", layout: "landscape" }); res.setHeader("Content-Type", "application/pdf"); res.setHeader("Content-Disposition", "attachment; filename=assessment-applications.pdf"); doc.pipe(res); doc.fontSize(18).text("Assessment Applications", { align: "center" }).moveDown(); rows.forEach((row) => { if (doc.y > doc.page.height - 55) doc.addPage(); doc.fontSize(9).text(`${row.number}. ${row.applicationNumber} | ${row.applicant} | ${row.phone} | ${row.program} | FS NO.: ${row.fsNumber || "-"} | ${row.trainingType} | ${row.status} | ${row.submitted}`); }); if (!rows.length) doc.text("No assessment applications found.", { align: "center" }); doc.end(); } catch (error) { next(error); }
 }
 
 export async function exportApplicationsExcel(req, res, next) {
@@ -401,6 +407,7 @@ export async function exportApplicationsExcel(req, res, next) {
       { header: "Start Month", key: "startMonth", width: 14 },
       { header: "End Month", key: "endMonth", width: 14 },
       { header: "Bank Name", key: "bankName", width: 25 },
+      { header: "FS NO.", key: "fsNumber", width: 22 },
       { header: "Status", key: "status", width: 12 },
       { header: "Agreement Accepted", key: "agreementAccepted", width: 20 },
       { header: "Digital Signature", key: "digitalSignature", width: 24 },
@@ -411,7 +418,7 @@ export async function exportApplicationsExcel(req, res, next) {
     sheet.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
     sheet.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0F88D2" } };
     sheet.views = [{ state: "frozen", ySplit: 1 }];
-    sheet.autoFilter = { from: "A1", to: "X1" };
+    sheet.autoFilter = { from: "A1", to: "Y1" };
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     res.setHeader("Content-Disposition", "attachment; filename=assessment-applications.xlsx");
     await workbook.xlsx.write(res);
@@ -486,4 +493,3 @@ export async function serveApplicationUpload(req, res, next) {
     return next(error);
   }
 }
-
