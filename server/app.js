@@ -17,6 +17,7 @@ import questionRoutes from "./routes/question.routes.js";
 import resultRoutes from "./routes/result.routes.js";
 import userRoutes from "./routes/user.routes.js";
 import certificateRoutes from "./routes/certificate.routes.js";
+import thirdPartyRoutes from "./routes/thirdParty.routes.js";
 import { errorHandler, notFound } from "./middlewares/error.js";
 
 export const app = express();
@@ -146,6 +147,8 @@ app.use("/api/questions", questionRoutes);
 app.use("/api/results", resultRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/certificates", certificateRoutes);
+app.use("/api/third-party", thirdPartyRoutes);
+app.use("/api/v1/external", thirdPartyRoutes);
 
 app.use(notFound);
 app.use(errorHandler);
