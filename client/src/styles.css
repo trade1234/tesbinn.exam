@@ -689,3 +689,48 @@ body {
 .certificate-confetti i:nth-child(4) { right: 8%; top: 8%; transform: rotate(62deg); }
 .certificate-confetti i:nth-child(5) { right: 14%; top: 15%; transform: rotate(-30deg); }
 .certificate-confetti i:nth-child(6) { right: 20%; top: 12%; width: 7px; height: 14px; }
+
+/* Compact sidebar scrollbar without the native arrow buttons. */
+.sidebar-scroll {
+  overscroll-behavior: contain;
+  scroll-behavior: smooth;
+  scrollbar-color: #b8c7da transparent;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+}
+
+.sidebar-scroll::-webkit-scrollbar {
+  width: 7px;
+}
+
+.sidebar-scroll::-webkit-scrollbar-track {
+  margin-block: 10px;
+  background: transparent;
+}
+
+.sidebar-scroll::-webkit-scrollbar-thumb {
+  min-height: 48px;
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: #b8c7da;
+  background-clip: padding-box;
+}
+
+.sidebar-scroll::-webkit-scrollbar-thumb:hover {
+  background: #1e9bf0;
+  background-clip: padding-box;
+}
+
+.dark .sidebar-scroll {
+  scrollbar-color: #475569 transparent;
+}
+
+.dark .sidebar-scroll::-webkit-scrollbar-thumb {
+  background: #475569;
+  background-clip: padding-box;
+}
+
+.dark .sidebar-scroll::-webkit-scrollbar-thumb:hover {
+  background: #38bdf8;
+  background-clip: padding-box;
+}

@@ -198,7 +198,7 @@ export default function Layout({ role }) {
                 </div>
               </div>
 
-              <nav className="flex-1 overflow-y-auto px-0 py-5 [scrollbar-width:thin]">
+              <nav className="sidebar-scroll flex-1 overflow-y-auto px-0 pb-8 pt-5">
               <p className="mb-3 px-5 text-xs font-bold tracking-wider uppercase xl:px-7 text-slate-400 dark:text-slate-500">Menu</p>
               <div className="space-y-1.5 px-3 xl:px-5">
                 {links.map(({ to, label, icon: Icon }) => (
@@ -376,7 +376,6 @@ export default function Layout({ role }) {
     </div>
   );
 }
-
 
 
 
