@@ -3,6 +3,7 @@ import { Course } from "../models/Course.js";
 import { Exam } from "../models/Exam.js";
 import { ExamAttempt } from "../models/ExamAttempt.js";
 import { User } from "../models/User.js";
+import { analyticsPeriod } from "./result.controller.js";
 
 /**
  * Calculates start date threshold based on requested timeframe period.
@@ -39,6 +40,128 @@ function getDateThreshold(period, customStartDate) {
 function formatProgramName(name) {
   if (!name || typeof name !== "string") return "Unassigned / General";
   return name.trim();
+}
+
+/**
+ * GET /api/v1/external/data-analytics
+ * Read-only representation of the admin Data Analytics page.
+ * Query parameters: period (all | daily | weekly | monthly | yearly), anchor (YYYY-MM-DD)
+ */
+export async function getDataAnalytics(req, res) {
+  try {
+    res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+    const selectedPeriod = analyticsPeriod(req.query.period || "all", new Date(), req.query.anchor);
+    const applicationQuery = {};
+    const resultQuery = { status: { $nin: ["IN_PROGRESS", "RETAKE_GRANTED"] } };
+    if (selectedPeriod.period !== "all") {
+      applicationQuery.submittedAt = selectedPeriod.query;
+      resultQuery.submittedAt = selectedPeriod.query;
+    }
+
+    const [courses, applications, results] = await Promise.all([
+      Course.find().select("courseName courseCode").sort({ courseName: 1 }).lean(),
+      Application.find(applicationQuery)
+        .select("applicationNumber personalInformation.firstName personalInformation.lastName personalInformation.grandfatherName personalInformation.phoneNumber trainingInformation.trainingProgram status submittedAt")
+        .sort({ submittedAt: -1 })
+        .lean(),
+      ExamAttempt.find(resultQuery)
+        .select("studentId examId score percentage status submittedAt")
+        .populate("studentId", "name enrollmentNumber")
+        .populate({ path: "examId", select: "title courseId", populate: { path: "courseId", select: "courseName courseCode" } })
+        .sort({ submittedAt: -1 })
+        .lean()
+    ]);
+
+    const normalizeKey = (value) => String(value || "").trim().toLowerCase();
+    const resultsMap = new Map();
+    const applicationsMap = new Map();
+    courses.forEach((course) => {
+      const key = normalizeKey(course.courseName);
+      resultsMap.set(key, { courseId: course._id, courseName: course.courseName, courseCode: course.courseCode, studentIds: new Set(), results: 0, passed: 0, failed: 0, disqualified: 0 });
+      applicationsMap.set(key, { courseId: course._id, programName: course.courseName, courseCode: course.courseCode, applications: 0, pending: 0, approved: 0, rejected: 0 });
+    });
+
+    results.forEach((result) => {
+      const course = result.examId?.courseId;
+      const key = normalizeKey(course?.courseName) || "unknown";
+      if (!resultsMap.has(key)) resultsMap.set(key, { courseId: course?._id || null, courseName: course?.courseName || "Unknown course", courseCode: course?.courseCode || "", studentIds: new Set(), results: 0, passed: 0, failed: 0, disqualified: 0 });
+      const row = resultsMap.get(key);
+      row.studentIds.add(String(result.studentId?._id || result.studentId));
+      row.results += 1;
+      if (result.status === "PASS") row.passed += 1;
+      if (result.status === "FAIL") row.failed += 1;
+      if (result.status === "DISQUALIFIED") row.disqualified += 1;
+    });
+
+    applications.forEach((application) => {
+      const programName = application.trainingInformation?.trainingProgram || "Unassigned";
+      const key = normalizeKey(programName);
+      if (!applicationsMap.has(key)) applicationsMap.set(key, { courseId: null, programName, courseCode: "", applications: 0, pending: 0, approved: 0, rejected: 0 });
+      const row = applicationsMap.get(key);
+      row.applications += 1;
+      if (application.status === "APPROVED") row.approved += 1;
+      else if (application.status === "REJECTED") row.rejected += 1;
+      else row.pending += 1;
+    });
+
+    const resultsByCourse = [...resultsMap.values()].map(({ studentIds, ...row }) => ({
+      ...row,
+      uniqueStudents: studentIds.size,
+      passRate: row.passed + row.failed ? Math.round((row.passed / (row.passed + row.failed)) * 100) : 0
+    }));
+    const passed = results.filter((result) => result.status === "PASS").length;
+    const failed = results.filter((result) => result.status === "FAIL").length;
+    const uniqueExamTakers = new Set(results.map((result) => String(result.studentId?._id || result.studentId))).size;
+
+    const payload = {
+      success: true,
+      apiVersion: "1.0",
+      readOnly: true,
+      access: req.analyticsPublic ? "PUBLIC_AGGREGATES" : "PROTECTED_DETAILS",
+      generatedAt: new Date().toISOString(),
+      source: "https://tsexam-ashen.vercel.app/",
+      filter: { period: selectedPeriod.period, label: selectedPeriod.label, anchor: req.query.anchor || null },
+      totals: {
+        applications: applications.length,
+        uniqueExamTakers,
+        completedResults: results.length,
+        passed,
+        failed,
+        disqualified: results.filter((result) => result.status === "DISQUALIFIED").length,
+        passRate: passed + failed ? Math.round((passed / (passed + failed)) * 100) : 0
+      },
+      resultsByCourse,
+      applicationsByProgram: [...applicationsMap.values()]
+    };
+
+    if (!req.analyticsPublic) {
+      payload.resultRecords = results.map((result) => ({
+        id: result._id,
+        studentName: result.studentId?.name || "Deleted student",
+        enrollmentNumber: result.studentId?.enrollmentNumber || "",
+        courseName: result.examId?.courseId?.courseName || "Unknown course",
+        courseCode: result.examId?.courseId?.courseCode || "",
+        examTitle: result.examId?.title || "Exam",
+        score: result.score,
+        percentage: result.percentage,
+        status: result.status,
+        submittedAt: result.submittedAt
+      }));
+      payload.applicationRecords = applications.map((application) => ({
+        id: application._id,
+        applicationNumber: application.applicationNumber,
+        applicantName: [application.personalInformation?.firstName, application.personalInformation?.lastName, application.personalInformation?.grandfatherName].filter(Boolean).join(" "),
+        phoneNumber: application.personalInformation?.phoneNumber || "",
+        trainingProgram: application.trainingInformation?.trainingProgram || "Unassigned",
+        status: application.status || "PENDING",
+        submittedAt: application.submittedAt
+      }));
+    }
+
+    res.json(payload);
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to fetch read-only data analytics", error: error.message });
+  }
 }
 
 /**

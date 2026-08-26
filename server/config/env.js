@@ -14,7 +14,7 @@ export const env = {
   port: process.env.PORT || 5000,
   jwtSecret: process.env.JWT_SECRET || "development-secret",
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || "7d",
-  thirdPartyApiKey: process.env.THIRD_PARTY_API_KEY || "tesbinn-3rdparty-secret-key-2026",
+  thirdPartyApiKey: process.env.THIRD_PARTY_API_KEY || (process.env.NODE_ENV === "production" ? "" : "development-read-only-api-key"),
   clientUrl: allowedOrigins[0] || "http://localhost:5173",
   clientUrls: allowedOrigins,
   allowedOrigins

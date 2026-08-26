@@ -40,12 +40,18 @@ function isAllowedOrigin(origin) {
   return allowedOrigins.has(origin) || localDevOrigin.test(origin) || renderFrontendOrigin.test(origin) || vercelFrontendOrigin.test(origin);
 }
 
-app.use(cors({
-  origin(origin, callback) {
-    if (!origin || isAllowedOrigin(origin)) return callback(null, true);
-    return callback(new Error(`Not allowed by CORS: ${origin}`));
-  },
-  credentials: true
+app.use(cors((req, callback) => {
+  const pathname = (req.originalUrl || req.url || "").split("?")[0].replace(/\/$/, "");
+  const isPublicAnalytics = pathname === "/api/v1/external/data-analytics" || pathname === "/api/third-party/data-analytics";
+  if (isPublicAnalytics) return callback(null, { origin: true, credentials: false });
+
+  return callback(null, {
+    origin(origin, originCallback) {
+      if (!origin || isAllowedOrigin(origin)) return originCallback(null, true);
+      return originCallback(new Error(`Not allowed by CORS: ${origin}`));
+    },
+    credentials: true
+  });
 }));
 app.use(express.json({ limit: "2mb" }));
 app.use(mongoSanitize());

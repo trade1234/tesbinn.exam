@@ -19,6 +19,13 @@ export async function authenticateThirdParty(req, res, next) {
 
     const expectedApiKey = env.thirdPartyApiKey;
 
+    if (!expectedApiKey) {
+      return res.status(503).json({
+        success: false,
+        message: "Third-party API is not configured. Set THIRD_PARTY_API_KEY on the server."
+      });
+    }
+
     // 1. Direct API key validation
     if (apiKeyFromHeader === expectedApiKey || apiKeyFromQuery === expectedApiKey || bearerToken === expectedApiKey) {
       req.authMethod = "API_KEY";
