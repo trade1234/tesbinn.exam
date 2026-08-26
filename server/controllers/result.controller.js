@@ -6,6 +6,7 @@ import { Exam } from "../models/Exam.js";
 import { Question } from "../models/Question.js";
 import { User } from "../models/User.js";
 import { Course } from "../models/Course.js";
+import { Application } from "../models/Application.js";
 import { scheduledExamEnd } from "../utils/examTiming.js";
 
 function normalizeAnswer(value = "") {
@@ -224,24 +225,30 @@ export function analyticsPeriod(periodValue, now = new Date()) {
 
 export async function courseAnalytics(req, res, next) {
   try {
+    res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+    res.set("Pragma", "no-cache");
+    res.set("Expires", "0");
     await finalizeExpiredAttempts();
 
     const selectedPeriod = analyticsPeriod(req.query.period);
-    const studentQuery = { role: "STUDENT" };
-    const attemptQuery = {};
+    const applicationQuery = {};
+    const attemptQuery = { status: { $nin: ["IN_PROGRESS", "RETAKE_GRANTED"] } };
     if (selectedPeriod.period !== "all") {
-      studentQuery.createdAt = selectedPeriod.query;
-      attemptQuery.startedAt = selectedPeriod.query;
+      applicationQuery.submittedAt = selectedPeriod.query;
+      attemptQuery.submittedAt = selectedPeriod.query;
     }
 
-    const [courses, students, attempts] = await Promise.all([
+    const [courses, applications, attempts] = await Promise.all([
       Course.find().select("courseName courseCode").sort({ courseName: 1 }).lean(),
-      User.find(studentQuery).select("name enrollmentNumber trainingTaken isActive createdAt").sort({ createdAt: -1 }).lean(),
+      Application.find(applicationQuery)
+        .select("applicationNumber personalInformation trainingInformation status submittedAt")
+        .sort({ submittedAt: -1 })
+        .lean(),
       ExamAttempt.find(attemptQuery)
         .select("studentId status examId score percentage startedAt submittedAt")
         .populate("studentId", "name enrollmentNumber")
         .populate({ path: "examId", select: "title courseId", populate: { path: "courseId", select: "courseName courseCode" } })
-        .sort({ startedAt: -1 })
+        .sort({ submittedAt: -1 })
         .lean()
     ]);
 
@@ -267,8 +274,9 @@ export async function courseAnalytics(req, res, next) {
         courseName: course.courseName,
         courseCode: course.courseCode,
         registered: 0,
-        active: 0,
-        inactive: 0
+        approved: 0,
+        pending: 0,
+        rejected: 0
       });
     });
 
@@ -298,22 +306,25 @@ export async function courseAnalytics(req, res, next) {
       if (attempt.status === "DISQUALIFIED") row.disqualified += 1;
     });
 
-    students.forEach((student) => {
-      const key = courseKey(student.trainingTaken) || "unassigned";
+    applications.forEach((application) => {
+      const program = application.trainingInformation?.trainingProgram;
+      const key = courseKey(program) || "unassigned";
       if (!registrationMap.has(key)) {
         registrationMap.set(key, {
           courseId: null,
-          courseName: student.trainingTaken?.trim() || "Unassigned",
+          courseName: program?.trim() || "Unassigned",
           courseCode: "",
           registered: 0,
-          active: 0,
-          inactive: 0
+          approved: 0,
+          pending: 0,
+          rejected: 0
         });
       }
       const row = registrationMap.get(key);
       row.registered += 1;
-      if (student.isActive) row.active += 1;
-      else row.inactive += 1;
+      if (application.status === "APPROVED") row.approved += 1;
+      else if (application.status === "REJECTED") row.rejected += 1;
+      else row.pending += 1;
     });
 
     const examByCourse = [...resultMap.values()].map(({ studentIds, ...row }) => ({
@@ -335,21 +346,23 @@ export async function courseAnalytics(req, res, next) {
       score: attempt.score,
       percentage: attempt.percentage,
       status: attempt.status,
-      date: attempt.submittedAt || attempt.startedAt
+      date: attempt.submittedAt
     }));
-    const registrationRecords = students.map((student) => ({
-      _id: student._id,
-      studentName: student.name,
-      enrollmentNumber: student.enrollmentNumber || "",
-      courseName: student.trainingTaken || "Unassigned",
-      status: student.isActive ? "Active" : "Inactive",
-      registeredAt: student.createdAt
+    const registrationRecords = applications.map((application) => ({
+      _id: application._id,
+      applicationNumber: application.applicationNumber,
+      applicantName: [application.personalInformation?.firstName, application.personalInformation?.lastName, application.personalInformation?.grandfatherName].filter(Boolean).join(" "),
+      phoneNumber: application.personalInformation?.phoneNumber || "",
+      courseName: application.trainingInformation?.trainingProgram || "Unassigned",
+      status: application.status || "PENDING",
+      submittedAt: application.submittedAt
     }));
 
     res.json({
       period: { key: selectedPeriod.period, label: selectedPeriod.label },
       totals: {
-        registeredStudents: students.length,
+        registeredStudents: applications.length,
+        applications: applications.length,
         examTakers: allExamStudents.size,
         attempts: attempts.length,
         passed,

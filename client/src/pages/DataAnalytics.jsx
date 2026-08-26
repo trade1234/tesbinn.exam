@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Activity, CheckCircle2, ClipboardList, RefreshCw, UserCheck, Users, XCircle } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import DataTable from "../components/DataTable.jsx";
@@ -11,6 +11,90 @@ const periods = [
   { key: "monthly", label: "Monthly" },
   { key: "yearly", label: "Yearly" }
 ];
+
+function periodStart(period, now = new Date()) {
+  if (period === "all") return null;
+  const eastAfricaOffsetMs = 3 * 60 * 60 * 1000;
+  const localNow = new Date(now.getTime() + eastAfricaOffsetMs);
+  let year = localNow.getUTCFullYear();
+  let month = localNow.getUTCMonth();
+  let day = localNow.getUTCDate();
+
+  if (period === "weekly") day -= (localNow.getUTCDay() + 6) % 7;
+  if (period === "monthly") day = 1;
+  if (period === "yearly") { month = 0; day = 1; }
+  return new Date(Date.UTC(year, month, day) - eastAfricaOffsetMs);
+}
+
+function recordsForPeriod(records, dateKey, period) {
+  const start = periodStart(period);
+  if (!start) return records;
+  const now = Date.now();
+  return records.filter((record) => {
+    const timestamp = new Date(record?.[dateKey]).getTime();
+    return Number.isFinite(timestamp) && timestamp >= start.getTime() && timestamp <= now;
+  });
+}
+
+function periodLabel(period) {
+  if (period === "daily") return "Today";
+  if (period === "weekly") return "This week";
+  if (period === "monthly") return new Date().toLocaleString("en-US", { month: "long", year: "numeric", timeZone: "Africa/Nairobi" });
+  if (period === "yearly") return new Date().toLocaleString("en-US", { year: "numeric", timeZone: "Africa/Nairobi" });
+  return "All time";
+}
+
+function enforcePeriod(responseData, period) {
+  const allExamRecords = responseData?.examRecords || [];
+  const allRegistrationRecords = responseData?.registrationRecords || [];
+  const examRecords = recordsForPeriod(allExamRecords, "date", period);
+  const registrationRecords = recordsForPeriod(allRegistrationRecords, "submittedAt", period);
+
+  const examMap = new Map((responseData?.examByCourse || []).map((row) => [row.courseName, {
+    ...row, studentKeys: new Set(), students: 0, attempts: 0, passed: 0, failed: 0, inProgress: 0, disqualified: 0, passRate: 0
+  }]));
+  examRecords.forEach((record) => {
+    if (!examMap.has(record.courseName)) examMap.set(record.courseName, { courseName: record.courseName, courseCode: record.courseCode || "", studentKeys: new Set(), students: 0, attempts: 0, passed: 0, failed: 0, inProgress: 0, disqualified: 0, passRate: 0 });
+    const row = examMap.get(record.courseName);
+    row.studentKeys.add(record.enrollmentNumber || record.studentName);
+    row.attempts += 1;
+    if (record.status === "PASS") row.passed += 1;
+    if (record.status === "FAIL") row.failed += 1;
+    if (record.status === "IN_PROGRESS") row.inProgress += 1;
+    if (record.status === "DISQUALIFIED") row.disqualified += 1;
+  });
+  const examByCourse = [...examMap.values()].map(({ studentKeys, ...row }) => ({
+    ...row,
+    students: studentKeys.size,
+    passRate: row.passed + row.failed ? Math.round((row.passed / (row.passed + row.failed)) * 100) : 0
+  }));
+
+  const registrationMap = new Map((responseData?.registrationsByCourse || []).map((row) => [row.courseName, { ...row, registered: 0, approved: 0, pending: 0, rejected: 0 }]));
+  registrationRecords.forEach((record) => {
+    if (!registrationMap.has(record.courseName)) registrationMap.set(record.courseName, { courseName: record.courseName, courseCode: "", registered: 0, approved: 0, pending: 0, rejected: 0 });
+    const row = registrationMap.get(record.courseName);
+    row.registered += 1;
+    if (record.status === "APPROVED") row.approved += 1;
+    else if (record.status === "REJECTED") row.rejected += 1;
+    else row.pending += 1;
+  });
+
+  return {
+    ...responseData,
+    totals: {
+      registeredStudents: registrationRecords.length,
+      applications: registrationRecords.length,
+      examTakers: new Set(examRecords.map((record) => record.enrollmentNumber || record.studentName)).size,
+      attempts: examRecords.length,
+      passed: examRecords.filter((record) => record.status === "PASS").length,
+      failed: examRecords.filter((record) => record.status === "FAIL").length
+    },
+    examByCourse,
+    registrationsByCourse: [...registrationMap.values()],
+    examRecords,
+    registrationRecords
+  };
+}
 
 function Metric({ label, value, icon: Icon, color }) {
   return (
@@ -36,9 +120,10 @@ const examColumns = [
 
 const registrationColumns = [
   { key: "courseName", label: "Course", render: (row) => <div><p className="font-semibold">{row.courseName}</p><p className="text-xs text-slate-400">{row.courseCode || "No code"}</p></div> },
-  { key: "registered", label: "Registered Students" },
-  { key: "active", label: "Active", render: (row) => <span className="font-bold text-emerald-600 dark:text-emerald-400">{row.active}</span> },
-  { key: "inactive", label: "Inactive", render: (row) => <span className="font-bold text-slate-500">{row.inactive}</span> }
+  { key: "registered", label: "Applications" },
+  { key: "approved", label: "Approved", render: (row) => <span className="font-bold text-emerald-600 dark:text-emerald-400">{row.approved}</span> },
+  { key: "pending", label: "Pending", render: (row) => <span className="font-bold text-amber-600 dark:text-amber-400">{row.pending}</span> },
+  { key: "rejected", label: "Rejected", render: (row) => <span className="font-bold text-red-600 dark:text-red-400">{row.rejected}</span> }
 ];
 
 function formatDate(value) {
@@ -50,7 +135,10 @@ function statusBadge(status) {
     PASS: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300",
     FAIL: "bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300",
     IN_PROGRESS: "bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300",
-    DISQUALIFIED: "bg-orange-100 text-orange-700 dark:bg-orange-950/50 dark:text-orange-300"
+    DISQUALIFIED: "bg-orange-100 text-orange-700 dark:bg-orange-950/50 dark:text-orange-300",
+    APPROVED: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300",
+    PENDING: "bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300",
+    REJECTED: "bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300"
   };
   return <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${colors[status] || "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"}`}>{String(status || "Unknown").replaceAll("_", " ")}</span>;
 }
@@ -65,10 +153,11 @@ const examRecordColumns = [
 ];
 
 const registrationRecordColumns = [
-  { key: "studentName", label: "Student", render: (row) => <div><p className="font-semibold">{row.studentName}</p><p className="text-xs text-slate-400">{row.enrollmentNumber || "No student ID"}</p></div> },
-  { key: "courseName", label: "Registered Course" },
-  { key: "status", label: "Account", render: (row) => <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${row.status === "Active" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300" : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"}`}>{row.status}</span> },
-  { key: "registeredAt", label: "Registration Date", render: (row) => formatDate(row.registeredAt) }
+  { key: "applicantName", label: "Applicant", render: (row) => <div><p className="font-semibold">{row.applicantName || "Unknown applicant"}</p><p className="text-xs text-slate-400">{row.applicationNumber || "No application number"}</p></div> },
+  { key: "phoneNumber", label: "Phone" },
+  { key: "courseName", label: "Training Program" },
+  { key: "status", label: "Application Status", render: (row) => statusBadge(row.status) },
+  { key: "submittedAt", label: "Submitted Date", render: (row) => formatDate(row.submittedAt) }
 ];
 
 function ChartCard({ title, description, data, children }) {
@@ -101,7 +190,9 @@ export default function DataAnalytics() {
   function load(selectedPeriod = period) {
     setLoading(true);
     setError("");
-    api.get("/results/analytics/courses", { params: { period: selectedPeriod } })
+    api.get("/results/analytics/courses", {
+      params: { period: selectedPeriod, _ts: Date.now() }
+    })
       .then((response) => setData(response.data))
       .catch((requestError) => setError(requestError.response?.data?.message || "Could not load data analytics."))
       .finally(() => setLoading(false));
@@ -109,14 +200,17 @@ export default function DataAnalytics() {
 
   useEffect(() => { load(period); }, [period]);
 
+  const filteredData = useMemo(() => enforcePeriod(data, period), [data, period]);
+  const selectedPeriodLabel = periodLabel(period);
+
   if (loading) return <div className="card p-8 text-sm text-slate-500">Loading data analytics...</div>;
   if (error) return <div className="card p-8"><p className="text-sm font-semibold text-red-600">{error}</p><button className="btn-primary mt-5" onClick={() => load(period)} type="button"><RefreshCw size={16} /> Retry</button></div>;
 
-  const totals = data?.totals || {};
-  const examByCourse = data?.examByCourse || [];
-  const registrationsByCourse = data?.registrationsByCourse || [];
-  const examRecords = data?.examRecords || [];
-  const registrationRecords = data?.registrationRecords || [];
+  const totals = filteredData?.totals || {};
+  const examByCourse = filteredData?.examByCourse || [];
+  const registrationsByCourse = filteredData?.registrationsByCourse || [];
+  const examRecords = filteredData?.examRecords || [];
+  const registrationRecords = filteredData?.registrationRecords || [];
 
   return (
     <div className="min-w-0 space-y-7">
@@ -131,7 +225,7 @@ export default function DataAnalytics() {
       <div className="card flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-sm font-bold text-slate-900 dark:text-slate-100">Analytics period</p>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Showing {data?.period?.label || "All time"} exam activity and registrations.</p>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Showing {selectedPeriodLabel} exam activity and registrations.</p>
         </div>
         <div className="flex flex-wrap gap-2" role="group" aria-label="Analytics period">
           {periods.map((item) => (
@@ -149,7 +243,7 @@ export default function DataAnalytics() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <Metric label="Registered Students" value={totals.registeredStudents} icon={Users} color="bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300" />
+        <Metric label="Applications" value={totals.applications ?? totals.registeredStudents} icon={Users} color="bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300" />
         <Metric label="Students Took Exams" value={totals.examTakers} icon={UserCheck} color="bg-violet-50 text-violet-600 dark:bg-violet-950/40 dark:text-violet-300" />
         <Metric label="Exam Attempts" value={totals.attempts} icon={ClipboardList} color="bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300" />
         <Metric label="Passed" value={totals.passed} icon={CheckCircle2} color="bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300" />
@@ -165,20 +259,21 @@ export default function DataAnalytics() {
         <DataTable columns={examColumns} rows={examByCourse} empty="No exam attempts have been recorded yet." />
         <div>
           <h3 className="mb-3 text-lg font-bold text-slate-950 dark:text-slate-100">Student exam data</h3>
-          <DataTable columns={examRecordColumns} rows={examRecords} empty={`No student exam data found for ${data?.period?.label || "this period"}.`} />
+          <DataTable columns={examRecordColumns} rows={examRecords} empty={`No student exam data found for ${selectedPeriodLabel}.`} />
         </div>
       </section>
 
       <section className="space-y-4">
-        <div><h2 className="text-xl font-bold text-slate-950 dark:text-slate-100">Student registrations by course</h2><p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Students assigned to each course, including active and inactive accounts.</p></div>
-        <ChartCard title="Course registration comparison" description="Registered students grouped by their assigned training course." data={registrationsByCourse}>
-          <Bar dataKey="active" name="Active" stackId="registrations" fill="#0ea5e9" />
-          <Bar dataKey="inactive" name="Inactive" stackId="registrations" fill="#94a3b8" radius={[6, 6, 0, 0]} />
+        <div><h2 className="text-xl font-bold text-slate-950 dark:text-slate-100">Applications by training program</h2><p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Registration data comes directly from the Applications sidebar.</p></div>
+        <ChartCard title="Application status by program" description="Pending, approved, and rejected applications grouped by training program." data={registrationsByCourse}>
+          <Bar dataKey="approved" name="Approved" stackId="registrations" fill="#10b981" />
+          <Bar dataKey="pending" name="Pending" stackId="registrations" fill="#f59e0b" />
+          <Bar dataKey="rejected" name="Rejected" stackId="registrations" fill="#ef4444" radius={[6, 6, 0, 0]} />
         </ChartCard>
-        <DataTable columns={registrationColumns} rows={registrationsByCourse} empty="No registered students were found." />
+        <DataTable columns={registrationColumns} rows={registrationsByCourse} empty="No applications were found." />
         <div>
-          <h3 className="mb-3 text-lg font-bold text-slate-950 dark:text-slate-100">Registered student data</h3>
-          <DataTable columns={registrationRecordColumns} rows={registrationRecords} empty={`No student registrations found for ${data?.period?.label || "this period"}.`} />
+          <h3 className="mb-3 text-lg font-bold text-slate-950 dark:text-slate-100">Application registration data</h3>
+          <DataTable columns={registrationRecordColumns} rows={registrationRecords} empty={`No applications found for ${selectedPeriodLabel}.`} />
         </div>
       </section>
     </div>
