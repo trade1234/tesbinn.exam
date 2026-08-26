@@ -4,6 +4,14 @@ import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAx
 import DataTable from "../components/DataTable.jsx";
 import { api } from "../services/api.js";
 
+const periods = [
+  { key: "all", label: "All time" },
+  { key: "daily", label: "Daily" },
+  { key: "weekly", label: "Weekly" },
+  { key: "quarterly", label: "Quarterly" },
+  { key: "yearly", label: "Yearly" }
+];
+
 function Metric({ label, value, icon: Icon, color }) {
   return (
     <div className="card flex items-center justify-between gap-4 p-5">
@@ -58,20 +66,21 @@ export default function DataAnalytics() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [period, setPeriod] = useState("all");
 
-  function load() {
+  function load(selectedPeriod = period) {
     setLoading(true);
     setError("");
-    api.get("/results/analytics/courses")
+    api.get("/results/analytics/courses", { params: { period: selectedPeriod } })
       .then((response) => setData(response.data))
       .catch((requestError) => setError(requestError.response?.data?.message || "Could not load data analytics."))
       .finally(() => setLoading(false));
   }
 
-  useEffect(load, []);
+  useEffect(() => { load(period); }, [period]);
 
   if (loading) return <div className="card p-8 text-sm text-slate-500">Loading data analytics...</div>;
-  if (error) return <div className="card p-8"><p className="text-sm font-semibold text-red-600">{error}</p><button className="btn-primary mt-5" onClick={load} type="button"><RefreshCw size={16} /> Retry</button></div>;
+  if (error) return <div className="card p-8"><p className="text-sm font-semibold text-red-600">{error}</p><button className="btn-primary mt-5" onClick={() => load(period)} type="button"><RefreshCw size={16} /> Retry</button></div>;
 
   const totals = data?.totals || {};
   const examByCourse = data?.examByCourse || [];
@@ -84,7 +93,27 @@ export default function DataAnalytics() {
           <h1 className="text-2xl font-bold text-slate-950 dark:text-slate-100">Data Analytics</h1>
           <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Exam participation, course performance, and student registration insights.</p>
         </div>
-        <button className="btn-secondary" type="button" onClick={load}><RefreshCw size={16} /> Refresh</button>
+        <button className="btn-secondary" type="button" onClick={() => load(period)}><RefreshCw size={16} /> Refresh</button>
+      </div>
+
+      <div className="card flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-sm font-bold text-slate-900 dark:text-slate-100">Analytics period</p>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Showing {data?.period?.label || "All time"} exam activity and registrations.</p>
+        </div>
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Analytics period">
+          {periods.map((item) => (
+            <button
+              key={item.key}
+              className={`rounded-lg border px-3 py-2 text-sm font-semibold transition ${period === item.key ? "border-[#1e9bf0] bg-[#1e9bf0] text-white" : "border-slate-200 bg-white text-slate-600 hover:border-sky-300 hover:text-[#0f88d2] dark:border-slate-700 dark:bg-[#111a2b] dark:text-slate-300"}`}
+              type="button"
+              aria-pressed={period === item.key}
+              onClick={() => setPeriod(item.key)}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">

@@ -196,15 +196,49 @@ export async function analytics(req, res, next) {
   }
 }
 
+function analyticsPeriod(periodValue) {
+  const period = ["daily", "weekly", "quarterly", "yearly"].includes(periodValue) ? periodValue : "all";
+  if (period === "all") return { period, label: "All time", query: {} };
+
+  const now = new Date();
+  let start;
+  let label;
+  if (period === "daily") {
+    start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    label = "Today";
+  } else if (period === "weekly") {
+    const dayFromMonday = (now.getUTCDay() + 6) % 7;
+    start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - dayFromMonday));
+    label = "This week";
+  } else if (period === "quarterly") {
+    const quarterStartMonth = Math.floor(now.getUTCMonth() / 3) * 3;
+    start = new Date(Date.UTC(now.getUTCFullYear(), quarterStartMonth, 1));
+    label = `Q${Math.floor(now.getUTCMonth() / 3) + 1} ${now.getUTCFullYear()}`;
+  } else {
+    start = new Date(Date.UTC(now.getUTCFullYear(), 0, 1));
+    label = String(now.getUTCFullYear());
+  }
+
+  return { period, label, query: { $gte: start, $lte: now } };
+}
+
 export async function courseAnalytics(req, res, next) {
   try {
     await finalizeExpiredAttempts();
 
+    const selectedPeriod = analyticsPeriod(req.query.period);
+    const studentQuery = { role: "STUDENT" };
+    const attemptQuery = {};
+    if (selectedPeriod.period !== "all") {
+      studentQuery.createdAt = selectedPeriod.query;
+      attemptQuery.startedAt = selectedPeriod.query;
+    }
+
     const [courses, students, attempts] = await Promise.all([
       Course.find().select("courseName courseCode").sort({ courseName: 1 }).lean(),
-      User.find({ role: "STUDENT" }).select("trainingTaken isActive").lean(),
-      ExamAttempt.find()
-        .select("studentId status examId")
+      User.find(studentQuery).select("trainingTaken isActive createdAt").lean(),
+      ExamAttempt.find(attemptQuery)
+        .select("studentId status examId startedAt")
         .populate({ path: "examId", select: "courseId", populate: { path: "courseId", select: "courseName courseCode" } })
         .lean()
     ]);
@@ -291,6 +325,7 @@ export async function courseAnalytics(req, res, next) {
     const failed = attempts.filter((attempt) => attempt.status === "FAIL").length;
 
     res.json({
+      period: { key: selectedPeriod.period, label: selectedPeriod.label },
       totals: {
         registeredStudents: students.length,
         examTakers: allExamStudents.size,
