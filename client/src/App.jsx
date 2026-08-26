@@ -22,6 +22,7 @@ import Certificates from "./pages/Certificates.jsx";
 import StudentResult from "./pages/StudentResult.jsx";
 import DataExports from "./pages/DataExports.jsx";
 import VerifyCertificate from "./pages/VerifyCertificate.jsx";
+import DataAnalytics from "./pages/DataAnalytics.jsx";
 
 export default function App() {
   return (
@@ -38,6 +39,7 @@ export default function App() {
           <Route path="/admin/students" element={<Students />} />
           <Route path="/admin/applications" element={<Applications />} />
           <Route path="/admin/data" element={<DataExports />} />
+          <Route path="/admin/analytics" element={<DataAnalytics />} />
           <Route path="/admin/results" element={<Results />} />
           <Route path="/admin/certificates" element={<Certificates />} />
           <Route path="/admin/certificates/:id" element={<Certificates />} />

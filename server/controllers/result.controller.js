@@ -196,6 +196,116 @@ export async function analytics(req, res, next) {
   }
 }
 
+export async function courseAnalytics(req, res, next) {
+  try {
+    await finalizeExpiredAttempts();
+
+    const [courses, students, attempts] = await Promise.all([
+      Course.find().select("courseName courseCode").sort({ courseName: 1 }).lean(),
+      User.find({ role: "STUDENT" }).select("trainingTaken isActive").lean(),
+      ExamAttempt.find()
+        .select("studentId status examId")
+        .populate({ path: "examId", select: "courseId", populate: { path: "courseId", select: "courseName courseCode" } })
+        .lean()
+    ]);
+
+    const courseKey = (value) => String(value || "").trim().toLowerCase();
+    const resultMap = new Map();
+    const registrationMap = new Map();
+
+    courses.forEach((course) => {
+      const key = courseKey(course.courseName);
+      resultMap.set(key, {
+        courseId: course._id,
+        courseName: course.courseName,
+        courseCode: course.courseCode,
+        studentIds: new Set(),
+        attempts: 0,
+        passed: 0,
+        failed: 0,
+        inProgress: 0,
+        disqualified: 0
+      });
+      registrationMap.set(key, {
+        courseId: course._id,
+        courseName: course.courseName,
+        courseCode: course.courseCode,
+        registered: 0,
+        active: 0,
+        inactive: 0
+      });
+    });
+
+    attempts.forEach((attempt) => {
+      const course = attempt.examId?.courseId;
+      if (!course) return;
+      const key = courseKey(course.courseName);
+      if (!resultMap.has(key)) {
+        resultMap.set(key, {
+          courseId: course._id,
+          courseName: course.courseName || "Unknown course",
+          courseCode: course.courseCode || "",
+          studentIds: new Set(),
+          attempts: 0,
+          passed: 0,
+          failed: 0,
+          inProgress: 0,
+          disqualified: 0
+        });
+      }
+      const row = resultMap.get(key);
+      row.studentIds.add(String(attempt.studentId));
+      row.attempts += 1;
+      if (attempt.status === "PASS") row.passed += 1;
+      if (attempt.status === "FAIL") row.failed += 1;
+      if (attempt.status === "IN_PROGRESS") row.inProgress += 1;
+      if (attempt.status === "DISQUALIFIED") row.disqualified += 1;
+    });
+
+    students.forEach((student) => {
+      const key = courseKey(student.trainingTaken) || "unassigned";
+      if (!registrationMap.has(key)) {
+        registrationMap.set(key, {
+          courseId: null,
+          courseName: student.trainingTaken?.trim() || "Unassigned",
+          courseCode: "",
+          registered: 0,
+          active: 0,
+          inactive: 0
+        });
+      }
+      const row = registrationMap.get(key);
+      row.registered += 1;
+      if (student.isActive) row.active += 1;
+      else row.inactive += 1;
+    });
+
+    const examByCourse = [...resultMap.values()].map(({ studentIds, ...row }) => ({
+      ...row,
+      students: studentIds.size,
+      passRate: row.passed + row.failed ? Math.round((row.passed / (row.passed + row.failed)) * 100) : 0
+    }));
+    const registrationsByCourse = [...registrationMap.values()];
+    const allExamStudents = new Set(attempts.map((attempt) => String(attempt.studentId)));
+    const passed = attempts.filter((attempt) => attempt.status === "PASS").length;
+    const failed = attempts.filter((attempt) => attempt.status === "FAIL").length;
+
+    res.json({
+      totals: {
+        registeredStudents: students.length,
+        examTakers: allExamStudents.size,
+        attempts: attempts.length,
+        passed,
+        failed
+      },
+      examByCourse,
+      registrationsByCourse
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function reviewResult(req, res, next) {
   try {
     await finalizeExpiredAttempts();
