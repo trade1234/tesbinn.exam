@@ -236,10 +236,12 @@ export async function courseAnalytics(req, res, next) {
 
     const [courses, students, attempts] = await Promise.all([
       Course.find().select("courseName courseCode").sort({ courseName: 1 }).lean(),
-      User.find(studentQuery).select("trainingTaken isActive createdAt").lean(),
+      User.find(studentQuery).select("name enrollmentNumber trainingTaken isActive createdAt").sort({ createdAt: -1 }).lean(),
       ExamAttempt.find(attemptQuery)
-        .select("studentId status examId startedAt")
-        .populate({ path: "examId", select: "courseId", populate: { path: "courseId", select: "courseName courseCode" } })
+        .select("studentId status examId score percentage startedAt submittedAt")
+        .populate("studentId", "name enrollmentNumber")
+        .populate({ path: "examId", select: "title courseId", populate: { path: "courseId", select: "courseName courseCode" } })
+        .sort({ startedAt: -1 })
         .lean()
     ]);
 
@@ -288,7 +290,7 @@ export async function courseAnalytics(req, res, next) {
         });
       }
       const row = resultMap.get(key);
-      row.studentIds.add(String(attempt.studentId));
+      row.studentIds.add(String(attempt.studentId?._id || attempt.studentId));
       row.attempts += 1;
       if (attempt.status === "PASS") row.passed += 1;
       if (attempt.status === "FAIL") row.failed += 1;
@@ -320,9 +322,29 @@ export async function courseAnalytics(req, res, next) {
       passRate: row.passed + row.failed ? Math.round((row.passed / (row.passed + row.failed)) * 100) : 0
     }));
     const registrationsByCourse = [...registrationMap.values()];
-    const allExamStudents = new Set(attempts.map((attempt) => String(attempt.studentId)));
+    const allExamStudents = new Set(attempts.map((attempt) => String(attempt.studentId?._id || attempt.studentId)));
     const passed = attempts.filter((attempt) => attempt.status === "PASS").length;
     const failed = attempts.filter((attempt) => attempt.status === "FAIL").length;
+    const examRecords = attempts.map((attempt) => ({
+      _id: attempt._id,
+      studentName: attempt.studentId?.name || "Deleted student",
+      enrollmentNumber: attempt.studentId?.enrollmentNumber || "",
+      courseName: attempt.examId?.courseId?.courseName || "Unknown course",
+      courseCode: attempt.examId?.courseId?.courseCode || "",
+      examTitle: attempt.examId?.title || "Exam",
+      score: attempt.score,
+      percentage: attempt.percentage,
+      status: attempt.status,
+      date: attempt.submittedAt || attempt.startedAt
+    }));
+    const registrationRecords = students.map((student) => ({
+      _id: student._id,
+      studentName: student.name,
+      enrollmentNumber: student.enrollmentNumber || "",
+      courseName: student.trainingTaken || "Unassigned",
+      status: student.isActive ? "Active" : "Inactive",
+      registeredAt: student.createdAt
+    }));
 
     res.json({
       period: { key: selectedPeriod.period, label: selectedPeriod.label },
@@ -334,7 +356,9 @@ export async function courseAnalytics(req, res, next) {
         failed
       },
       examByCourse,
-      registrationsByCourse
+      registrationsByCourse,
+      examRecords,
+      registrationRecords
     });
   } catch (error) {
     next(error);

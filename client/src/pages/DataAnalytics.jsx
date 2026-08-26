@@ -41,6 +41,36 @@ const registrationColumns = [
   { key: "inactive", label: "Inactive", render: (row) => <span className="font-bold text-slate-500">{row.inactive}</span> }
 ];
 
+function formatDate(value) {
+  return value ? new Date(value).toLocaleString() : "—";
+}
+
+function statusBadge(status) {
+  const colors = {
+    PASS: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300",
+    FAIL: "bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300",
+    IN_PROGRESS: "bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300",
+    DISQUALIFIED: "bg-orange-100 text-orange-700 dark:bg-orange-950/50 dark:text-orange-300"
+  };
+  return <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${colors[status] || "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"}`}>{String(status || "Unknown").replaceAll("_", " ")}</span>;
+}
+
+const examRecordColumns = [
+  { key: "studentName", label: "Student", render: (row) => <div><p className="font-semibold">{row.studentName}</p><p className="text-xs text-slate-400">{row.enrollmentNumber || "No student ID"}</p></div> },
+  { key: "courseName", label: "Course" },
+  { key: "examTitle", label: "Exam" },
+  { key: "score", label: "Score", render: (row) => `${row.score ?? 0} (${row.percentage ?? 0}%)` },
+  { key: "status", label: "Result", render: (row) => statusBadge(row.status) },
+  { key: "date", label: "Exam Date", render: (row) => formatDate(row.date) }
+];
+
+const registrationRecordColumns = [
+  { key: "studentName", label: "Student", render: (row) => <div><p className="font-semibold">{row.studentName}</p><p className="text-xs text-slate-400">{row.enrollmentNumber || "No student ID"}</p></div> },
+  { key: "courseName", label: "Registered Course" },
+  { key: "status", label: "Account", render: (row) => <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${row.status === "Active" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300" : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"}`}>{row.status}</span> },
+  { key: "registeredAt", label: "Registration Date", render: (row) => formatDate(row.registeredAt) }
+];
+
 function ChartCard({ title, description, data, children }) {
   return (
     <section className="card min-w-0 p-4 sm:p-6">
@@ -85,6 +115,8 @@ export default function DataAnalytics() {
   const totals = data?.totals || {};
   const examByCourse = data?.examByCourse || [];
   const registrationsByCourse = data?.registrationsByCourse || [];
+  const examRecords = data?.examRecords || [];
+  const registrationRecords = data?.registrationRecords || [];
 
   return (
     <div className="min-w-0 space-y-7">
@@ -131,6 +163,10 @@ export default function DataAnalytics() {
           <Bar dataKey="failed" name="Failed" stackId="results" fill="#ef4444" radius={[6, 6, 0, 0]} />
         </ChartCard>
         <DataTable columns={examColumns} rows={examByCourse} empty="No exam attempts have been recorded yet." />
+        <div>
+          <h3 className="mb-3 text-lg font-bold text-slate-950 dark:text-slate-100">Student exam data</h3>
+          <DataTable columns={examRecordColumns} rows={examRecords} empty={`No student exam data found for ${data?.period?.label || "this period"}.`} />
+        </div>
       </section>
 
       <section className="space-y-4">
@@ -140,6 +176,10 @@ export default function DataAnalytics() {
           <Bar dataKey="inactive" name="Inactive" stackId="registrations" fill="#94a3b8" radius={[6, 6, 0, 0]} />
         </ChartCard>
         <DataTable columns={registrationColumns} rows={registrationsByCourse} empty="No registered students were found." />
+        <div>
+          <h3 className="mb-3 text-lg font-bold text-slate-950 dark:text-slate-100">Registered student data</h3>
+          <DataTable columns={registrationRecordColumns} rows={registrationRecords} empty={`No student registrations found for ${data?.period?.label || "this period"}.`} />
+        </div>
       </section>
     </div>
   );
