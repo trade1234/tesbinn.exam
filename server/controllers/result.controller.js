@@ -196,27 +196,27 @@ export async function analytics(req, res, next) {
   }
 }
 
-function analyticsPeriod(periodValue) {
-  const period = ["daily", "weekly", "quarterly", "yearly"].includes(periodValue) ? periodValue : "all";
+export function analyticsPeriod(periodValue, now = new Date()) {
+  const period = ["daily", "weekly", "monthly", "yearly"].includes(periodValue) ? periodValue : "all";
   if (period === "all") return { period, label: "All time", query: {} };
 
-  const now = new Date();
+  const eastAfricaOffsetMs = 3 * 60 * 60 * 1000;
+  const eastAfricaNow = new Date(now.getTime() + eastAfricaOffsetMs);
   let start;
   let label;
   if (period === "daily") {
-    start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    start = new Date(Date.UTC(eastAfricaNow.getUTCFullYear(), eastAfricaNow.getUTCMonth(), eastAfricaNow.getUTCDate()) - eastAfricaOffsetMs);
     label = "Today";
   } else if (period === "weekly") {
-    const dayFromMonday = (now.getUTCDay() + 6) % 7;
-    start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - dayFromMonday));
+    const dayFromMonday = (eastAfricaNow.getUTCDay() + 6) % 7;
+    start = new Date(Date.UTC(eastAfricaNow.getUTCFullYear(), eastAfricaNow.getUTCMonth(), eastAfricaNow.getUTCDate() - dayFromMonday) - eastAfricaOffsetMs);
     label = "This week";
-  } else if (period === "quarterly") {
-    const quarterStartMonth = Math.floor(now.getUTCMonth() / 3) * 3;
-    start = new Date(Date.UTC(now.getUTCFullYear(), quarterStartMonth, 1));
-    label = `Q${Math.floor(now.getUTCMonth() / 3) + 1} ${now.getUTCFullYear()}`;
+  } else if (period === "monthly") {
+    start = new Date(Date.UTC(eastAfricaNow.getUTCFullYear(), eastAfricaNow.getUTCMonth(), 1) - eastAfricaOffsetMs);
+    label = eastAfricaNow.toLocaleString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
   } else {
-    start = new Date(Date.UTC(now.getUTCFullYear(), 0, 1));
-    label = String(now.getUTCFullYear());
+    start = new Date(Date.UTC(eastAfricaNow.getUTCFullYear(), 0, 1) - eastAfricaOffsetMs);
+    label = String(eastAfricaNow.getUTCFullYear());
   }
 
   return { period, label, query: { $gte: start, $lte: now } };

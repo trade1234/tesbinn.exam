@@ -8,7 +8,7 @@ const periods = [
   { key: "all", label: "All time" },
   { key: "daily", label: "Daily" },
   { key: "weekly", label: "Weekly" },
-  { key: "quarterly", label: "Quarterly" },
+  { key: "monthly", label: "Monthly" },
   { key: "yearly", label: "Yearly" }
 ];
 
