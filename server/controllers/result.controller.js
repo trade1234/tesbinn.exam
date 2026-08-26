@@ -197,30 +197,40 @@ export async function analytics(req, res, next) {
   }
 }
 
-export function analyticsPeriod(periodValue, now = new Date()) {
+export function analyticsPeriod(periodValue, now = new Date(), anchorValue = "") {
   const period = ["daily", "weekly", "monthly", "yearly"].includes(periodValue) ? periodValue : "all";
   if (period === "all") return { period, label: "All time", query: {} };
 
   const eastAfricaOffsetMs = 3 * 60 * 60 * 1000;
   const eastAfricaNow = new Date(now.getTime() + eastAfricaOffsetMs);
+  const anchorMatch = String(anchorValue).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  const anchorYear = anchorMatch ? Number(anchorMatch[1]) : eastAfricaNow.getUTCFullYear();
+  const anchorMonth = anchorMatch ? Number(anchorMatch[2]) - 1 : eastAfricaNow.getUTCMonth();
+  const anchorDay = anchorMatch ? Number(anchorMatch[3]) : eastAfricaNow.getUTCDate();
   let start;
+  let end;
   let label;
   if (period === "daily") {
-    start = new Date(Date.UTC(eastAfricaNow.getUTCFullYear(), eastAfricaNow.getUTCMonth(), eastAfricaNow.getUTCDate()) - eastAfricaOffsetMs);
-    label = "Today";
+    start = new Date(Date.UTC(anchorYear, anchorMonth, anchorDay) - eastAfricaOffsetMs);
+    end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
+    label = anchorValue ? start.toLocaleDateString("en-US", { timeZone: "Africa/Nairobi", year: "numeric", month: "long", day: "numeric" }) : "Today";
   } else if (period === "weekly") {
-    const dayFromMonday = (eastAfricaNow.getUTCDay() + 6) % 7;
-    start = new Date(Date.UTC(eastAfricaNow.getUTCFullYear(), eastAfricaNow.getUTCMonth(), eastAfricaNow.getUTCDate() - dayFromMonday) - eastAfricaOffsetMs);
-    label = "This week";
+    const anchor = new Date(Date.UTC(anchorYear, anchorMonth, anchorDay));
+    const dayFromMonday = (anchor.getUTCDay() + 6) % 7;
+    start = new Date(Date.UTC(anchorYear, anchorMonth, anchorDay - dayFromMonday) - eastAfricaOffsetMs);
+    end = new Date(start.getTime() + 7 * 24 * 60 * 60 * 1000);
+    label = anchorValue ? `Week of ${start.toLocaleDateString("en-US", { timeZone: "Africa/Nairobi", month: "short", day: "numeric", year: "numeric" })}` : "This week";
   } else if (period === "monthly") {
-    start = new Date(Date.UTC(eastAfricaNow.getUTCFullYear(), eastAfricaNow.getUTCMonth(), 1) - eastAfricaOffsetMs);
-    label = eastAfricaNow.toLocaleString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
+    start = new Date(Date.UTC(anchorYear, anchorMonth, 1) - eastAfricaOffsetMs);
+    end = new Date(Date.UTC(anchorYear, anchorMonth + 1, 1) - eastAfricaOffsetMs);
+    label = start.toLocaleString("en-US", { month: "long", year: "numeric", timeZone: "Africa/Nairobi" });
   } else {
-    start = new Date(Date.UTC(eastAfricaNow.getUTCFullYear(), 0, 1) - eastAfricaOffsetMs);
-    label = String(eastAfricaNow.getUTCFullYear());
+    start = new Date(Date.UTC(anchorYear, 0, 1) - eastAfricaOffsetMs);
+    end = new Date(Date.UTC(anchorYear + 1, 0, 1) - eastAfricaOffsetMs);
+    label = String(anchorYear);
   }
 
-  return { period, label, query: { $gte: start, $lte: now } };
+  return { period, label, query: { $gte: start, $lt: end } };
 }
 
 export async function courseAnalytics(req, res, next) {
@@ -230,7 +240,7 @@ export async function courseAnalytics(req, res, next) {
     res.set("Expires", "0");
     await finalizeExpiredAttempts();
 
-    const selectedPeriod = analyticsPeriod(req.query.period);
+    const selectedPeriod = analyticsPeriod(req.query.period, new Date(), req.query.anchor);
     const applicationQuery = {};
     const attemptQuery = { status: { $nin: ["IN_PROGRESS", "RETAKE_GRANTED"] } };
     if (selectedPeriod.period !== "all") {

@@ -12,43 +12,57 @@ const periods = [
   { key: "yearly", label: "Yearly" }
 ];
 
-function periodStart(period, now = new Date()) {
+const monthOptions = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+function localDateValue(now = new Date()) {
+  const eastAfrica = new Date(now.getTime() + 3 * 60 * 60 * 1000);
+  return `${eastAfrica.getUTCFullYear()}-${String(eastAfrica.getUTCMonth() + 1).padStart(2, "0")}-${String(eastAfrica.getUTCDate()).padStart(2, "0")}`;
+}
+
+function periodRange(period, anchor, now = new Date()) {
   if (period === "all") return null;
   const eastAfricaOffsetMs = 3 * 60 * 60 * 1000;
   const localNow = new Date(now.getTime() + eastAfricaOffsetMs);
-  let year = localNow.getUTCFullYear();
-  let month = localNow.getUTCMonth();
-  let day = localNow.getUTCDate();
+  const match = String(anchor).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  let year = match ? Number(match[1]) : localNow.getUTCFullYear();
+  let month = match ? Number(match[2]) - 1 : localNow.getUTCMonth();
+  let day = match ? Number(match[3]) : localNow.getUTCDate();
 
-  if (period === "weekly") day -= (localNow.getUTCDay() + 6) % 7;
+  if (period === "weekly") day -= (new Date(Date.UTC(year, month, day)).getUTCDay() + 6) % 7;
   if (period === "monthly") day = 1;
   if (period === "yearly") { month = 0; day = 1; }
-  return new Date(Date.UTC(year, month, day) - eastAfricaOffsetMs);
+  const start = new Date(Date.UTC(year, month, day) - eastAfricaOffsetMs);
+  let end;
+  if (period === "daily") end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
+  if (period === "weekly") end = new Date(start.getTime() + 7 * 24 * 60 * 60 * 1000);
+  if (period === "monthly") end = new Date(Date.UTC(year, month + 1, 1) - eastAfricaOffsetMs);
+  if (period === "yearly") end = new Date(Date.UTC(year + 1, 0, 1) - eastAfricaOffsetMs);
+  return { start, end };
 }
 
-function recordsForPeriod(records, dateKey, period) {
-  const start = periodStart(period);
-  if (!start) return records;
-  const now = Date.now();
+function recordsForPeriod(records, dateKey, period, anchor) {
+  const range = periodRange(period, anchor);
+  if (!range) return records;
   return records.filter((record) => {
     const timestamp = new Date(record?.[dateKey]).getTime();
-    return Number.isFinite(timestamp) && timestamp >= start.getTime() && timestamp <= now;
+    return Number.isFinite(timestamp) && timestamp >= range.start.getTime() && timestamp < range.end.getTime();
   });
 }
 
-function periodLabel(period) {
-  if (period === "daily") return "Today";
-  if (period === "weekly") return "This week";
-  if (period === "monthly") return new Date().toLocaleString("en-US", { month: "long", year: "numeric", timeZone: "Africa/Nairobi" });
-  if (period === "yearly") return new Date().toLocaleString("en-US", { year: "numeric", timeZone: "Africa/Nairobi" });
+function periodLabel(period, anchor) {
+  const range = periodRange(period, anchor);
+  if (period === "daily") return anchor === localDateValue() ? "Today" : range.start.toLocaleDateString("en-US", { timeZone: "Africa/Nairobi", year: "numeric", month: "long", day: "numeric" });
+  if (period === "weekly") return `Week of ${range.start.toLocaleDateString("en-US", { timeZone: "Africa/Nairobi", year: "numeric", month: "short", day: "numeric" })}`;
+  if (period === "monthly") return range.start.toLocaleString("en-US", { month: "long", year: "numeric", timeZone: "Africa/Nairobi" });
+  if (period === "yearly") return range.start.toLocaleString("en-US", { year: "numeric", timeZone: "Africa/Nairobi" });
   return "All time";
 }
 
-function enforcePeriod(responseData, period) {
+function enforcePeriod(responseData, period, anchor) {
   const allExamRecords = responseData?.examRecords || [];
   const allRegistrationRecords = responseData?.registrationRecords || [];
-  const examRecords = recordsForPeriod(allExamRecords, "date", period);
-  const registrationRecords = recordsForPeriod(allRegistrationRecords, "submittedAt", period);
+  const examRecords = recordsForPeriod(allExamRecords, "date", period, anchor);
+  const registrationRecords = recordsForPeriod(allRegistrationRecords, "submittedAt", period, anchor);
 
   const examMap = new Map((responseData?.examByCourse || []).map((row) => [row.courseName, {
     ...row, studentKeys: new Set(), students: 0, attempts: 0, passed: 0, failed: 0, inProgress: 0, disqualified: 0, passRate: 0
@@ -185,26 +199,37 @@ export default function DataAnalytics() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [period, setPeriod] = useState("all");
+  const today = localDateValue();
+  const currentYear = Number(today.slice(0, 4));
+  const [period, setPeriod] = useState("daily");
+  const [selectedDate, setSelectedDate] = useState(today);
+  const [selectedMonth, setSelectedMonth] = useState(Number(today.slice(5, 7)));
+  const [selectedYear, setSelectedYear] = useState(currentYear);
+  const yearOptions = Array.from({ length: currentYear - 1999 }, (_, index) => currentYear - index);
+  const anchor = period === "daily" || period === "weekly"
+    ? selectedDate
+    : period === "monthly"
+      ? `${selectedYear}-${String(selectedMonth).padStart(2, "0")}-01`
+      : period === "yearly" ? `${selectedYear}-01-01` : "";
 
-  function load(selectedPeriod = period) {
+  function load(selectedPeriod = period, selectedAnchor = anchor) {
     setLoading(true);
     setError("");
     api.get("/results/analytics/courses", {
-      params: { period: selectedPeriod, _ts: Date.now() }
+      params: { period: selectedPeriod, anchor: selectedAnchor, _ts: Date.now() }
     })
       .then((response) => setData(response.data))
       .catch((requestError) => setError(requestError.response?.data?.message || "Could not load data analytics."))
       .finally(() => setLoading(false));
   }
 
-  useEffect(() => { load(period); }, [period]);
+  useEffect(() => { load(period, anchor); }, [period, anchor]);
 
-  const filteredData = useMemo(() => enforcePeriod(data, period), [data, period]);
-  const selectedPeriodLabel = periodLabel(period);
+  const filteredData = useMemo(() => enforcePeriod(data, period, anchor), [data, period, anchor]);
+  const selectedPeriodLabel = periodLabel(period, anchor);
 
   if (loading) return <div className="card p-8 text-sm text-slate-500">Loading data analytics...</div>;
-  if (error) return <div className="card p-8"><p className="text-sm font-semibold text-red-600">{error}</p><button className="btn-primary mt-5" onClick={() => load(period)} type="button"><RefreshCw size={16} /> Retry</button></div>;
+  if (error) return <div className="card p-8"><p className="text-sm font-semibold text-red-600">{error}</p><button className="btn-primary mt-5" onClick={() => load(period, anchor)} type="button"><RefreshCw size={16} /> Retry</button></div>;
 
   const totals = filteredData?.totals || {};
   const examByCourse = filteredData?.examByCourse || [];
@@ -219,7 +244,7 @@ export default function DataAnalytics() {
           <h1 className="text-2xl font-bold text-slate-950 dark:text-slate-100">Data Analytics</h1>
           <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Exam participation, course performance, and student registration insights.</p>
         </div>
-        <button className="btn-secondary" type="button" onClick={() => load(period)}><RefreshCw size={16} /> Refresh</button>
+        <button className="btn-secondary" type="button" onClick={() => load(period, anchor)}><RefreshCw size={16} /> Refresh</button>
       </div>
 
       <div className="card flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -227,18 +252,35 @@ export default function DataAnalytics() {
           <p className="text-sm font-bold text-slate-900 dark:text-slate-100">Analytics period</p>
           <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Showing {selectedPeriodLabel} exam activity and registrations.</p>
         </div>
-        <div className="flex flex-wrap gap-2" role="group" aria-label="Analytics period">
-          {periods.map((item) => (
-            <button
-              key={item.key}
-              className={`rounded-lg border px-3 py-2 text-sm font-semibold transition ${period === item.key ? "border-[#1e9bf0] bg-[#1e9bf0] text-white" : "border-slate-200 bg-white text-slate-600 hover:border-sky-300 hover:text-[#0f88d2] dark:border-slate-700 dark:bg-[#111a2b] dark:text-slate-300"}`}
-              type="button"
-              aria-pressed={period === item.key}
-              onClick={() => setPeriod(item.key)}
-            >
-              {item.label}
-            </button>
-          ))}
+        <div className="grid gap-2 sm:grid-flow-col sm:auto-cols-max" aria-label="Analytics period filters">
+          <label className="grid gap-1 text-xs font-bold text-slate-500 dark:text-slate-400">
+            Period
+            <select className="input min-w-36" value={period} onChange={(event) => setPeriod(event.target.value)}>
+              {periods.map((item) => <option key={item.key} value={item.key}>{item.label}</option>)}
+            </select>
+          </label>
+          {(period === "daily" || period === "weekly") && (
+            <label className="grid gap-1 text-xs font-bold text-slate-500 dark:text-slate-400">
+              {period === "daily" ? "Date" : "Week containing"}
+              <input className="input" type="date" value={selectedDate} onChange={(event) => setSelectedDate(event.target.value)} />
+            </label>
+          )}
+          {period === "monthly" && (
+            <label className="grid gap-1 text-xs font-bold text-slate-500 dark:text-slate-400">
+              Month
+              <select className="input min-w-36" value={selectedMonth} onChange={(event) => setSelectedMonth(Number(event.target.value))}>
+                {monthOptions.map((month, index) => <option key={month} value={index + 1}>{month}</option>)}
+              </select>
+            </label>
+          )}
+          {(period === "monthly" || period === "yearly") && (
+            <label className="grid gap-1 text-xs font-bold text-slate-500 dark:text-slate-400">
+              Year
+              <select className="input min-w-28" value={selectedYear} onChange={(event) => setSelectedYear(Number(event.target.value))}>
+                {yearOptions.map((year) => <option key={year} value={year}>{year}</option>)}
+              </select>
+            </label>
+          )}
         </div>
       </div>
 

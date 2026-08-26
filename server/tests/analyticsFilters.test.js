@@ -11,7 +11,7 @@ test("all-time analytics has no date restriction", () => {
 test("daily analytics starts at midnight East Africa Time", () => {
   const result = analyticsPeriod("daily", now);
   assert.equal(result.query.$gte.toISOString(), "2026-08-25T21:00:00.000Z");
-  assert.equal(result.query.$lte, now);
+  assert.equal(result.query.$lt.toISOString(), "2026-08-26T21:00:00.000Z");
 });
 
 test("weekly analytics starts on Monday in East Africa Time", () => {
@@ -33,4 +33,11 @@ test("yearly analytics starts on January 1 in East Africa Time", () => {
 
 test("unknown analytics periods safely use all time", () => {
   assert.equal(analyticsPeriod("invalid", now).period, "all");
+});
+
+test("analytics filters can select a historical day, month, and year", () => {
+  assert.equal(analyticsPeriod("daily", now, "2025-06-15").query.$gte.toISOString(), "2025-06-14T21:00:00.000Z");
+  assert.equal(analyticsPeriod("monthly", now, "2025-06-01").label, "June 2025");
+  assert.equal(analyticsPeriod("monthly", now, "2025-06-01").query.$lt.toISOString(), "2025-06-30T21:00:00.000Z");
+  assert.equal(analyticsPeriod("yearly", now, "2024-01-01").label, "2024");
 });
