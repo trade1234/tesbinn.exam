@@ -13,7 +13,7 @@ const serviceLinks = [
   {
     title: "Evaluation Form",
     description: "Submit your training or service evaluation using the official online evaluation form.",
-    href: "https://tessbin-evaluation1.vercel.app/",
+    href: "https://tessbinevaulation.vercel.app/",
     icon: ClipboardCheck,
     tone: "emerald",
     action: "Open evaluation"
