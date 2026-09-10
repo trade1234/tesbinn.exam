@@ -4,10 +4,37 @@ import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import ResultImageCanvas, { resultImageBlob } from "../components/ResultImageCanvas.jsx";
 import { api } from "../services/api.js";
 
+function formatResultNumber(value) {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return "--";
+  return Number.isInteger(num) ? String(num) : Number(num.toFixed(2)).toString();
+}
+
+function formatPercentage(value) {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return "--";
+  return `${Number.isInteger(num) ? num : Number(num.toFixed(2))}%`;
+}
+
 function resultFromReview(review) {
   const attempt = review?.attempt;
   if (!attempt) return null;
-  return { attemptId: attempt._id, studentName: attempt.studentId?.name, enrollmentNumber: attempt.studentId?.enrollmentNumber || "", trainingType: attempt.studentId?.trainingTaken || attempt.examId?.courseId?.courseName || "", courseName: attempt.examId?.courseId?.courseName || "", examName: attempt.examId?.title || "", score: attempt.score, totalMarks: review.totalMarks, percentage: attempt.percentage, status: attempt.status, submittedAt: attempt.submittedAt };
+  const score = attempt.score ?? 0;
+  const totalMarks = review.totalMarks || attempt.examId?.totalMarks || 0;
+  const percentage = attempt.percentage ?? (totalMarks > 0 ? Math.round((score / totalMarks) * 10000) / 100 : 0);
+  return {
+    attemptId: attempt._id,
+    studentName: attempt.studentId?.name,
+    enrollmentNumber: attempt.studentId?.enrollmentNumber || "",
+    trainingType: attempt.studentId?.trainingTaken || attempt.examId?.courseId?.courseName || "",
+    courseName: attempt.examId?.courseId?.courseName || "",
+    examName: attempt.examId?.title || "",
+    score,
+    totalMarks,
+    percentage,
+    status: attempt.status,
+    submittedAt: attempt.submittedAt
+  };
 }
 
 export default function StudentResult() {
@@ -48,7 +75,7 @@ export default function StudentResult() {
   if (!result) return <div className="flex items-center gap-3 p-8 text-slate-500"><LoaderCircle className="animate-spin" /> Loading result...</div>;
   return <div className="mx-auto max-w-5xl space-y-6">
     <div className="rounded-2xl bg-white p-5 shadow-soft dark:bg-[#111a2b] sm:flex sm:items-center sm:justify-between sm:p-7">
-      <div><p className={`text-sm font-bold uppercase tracking-widest ${result.status === "PASS" ? "text-emerald-600" : "text-red-600"}`}>Exam submitted successfully</p><h1 className="mt-2 text-3xl font-bold text-slate-950 dark:text-white">Your result is ready</h1><p className="mt-2 text-slate-500 dark:text-slate-400">{result.studentName} · {result.score}/{result.totalMarks} ({result.percentage}%)</p></div>
+      <div><p className={`text-sm font-bold uppercase tracking-widest ${result.status === "PASS" ? "text-emerald-600" : "text-red-600"}`}>Exam submitted successfully</p><h1 className="mt-2 text-3xl font-bold text-slate-950 dark:text-white">Your result is ready</h1><p className="mt-2 text-slate-500 dark:text-slate-400">{result.studentName} · {formatResultNumber(result.score)}/{formatResultNumber(result.totalMarks)} ({formatPercentage(result.percentage)})</p></div>
       <div className="mt-5 flex flex-col gap-3 sm:mt-0 sm:flex-row">
         {certificateId && <Link className="btn-primary" to={`/student/certificates/${certificateId}`}><Award size={17} /> View Certificate</Link>}
         <Link className="btn-secondary" to="/student/results"><ListChecks size={17} /> All results</Link>

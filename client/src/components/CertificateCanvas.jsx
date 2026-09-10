@@ -9,8 +9,11 @@ const loadImage = (src) => new Promise((resolve) => {
   image.onerror = () => resolve(null);
   image.src = src;
 });
-const resultNumberFormatter = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: false });
-const formatResultNumber = (value) => resultNumberFormatter.format(Number(value));
+const formatResultNumber = (value) => {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return "--";
+  return Number.isInteger(num) ? String(num) : Number(num.toFixed(2)).toString();
+};
 
 export function drawCertificate(canvas, c, logo, qr) {
   const ctx = canvas.getContext("2d"), w = 1600, h = 1130;
@@ -149,7 +152,11 @@ export function drawCertificate(canvas, c, logo, qr) {
   const percentage = Number(c.percentage);
   const percentageText = Number.isFinite(percentage) ? `${formatResultNumber(percentage)}%` : "--";
   const score = Number(c.score), totalMarks = Number(c.totalMarks);
-  const scoreText = Number.isFinite(score) && Number.isFinite(totalMarks) ? `${formatResultNumber(score)} / ${formatResultNumber(totalMarks)}` : "--";
+  const scoreText = Number.isFinite(score) && Number.isFinite(totalMarks) && totalMarks > 0
+    ? `${formatResultNumber(score)} / ${formatResultNumber(totalMarks)}`
+    : Number.isFinite(score)
+      ? `${formatResultNumber(score)}`
+      : "--";
   const resultText = String(c.status || "PASS").toUpperCase();
 
   const resultCell = (label, value, index, valueColor) => {

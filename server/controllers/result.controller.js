@@ -8,6 +8,7 @@ import { User } from "../models/User.js";
 import { Course } from "../models/Course.js";
 import { Application } from "../models/Application.js";
 import { scheduledExamEnd } from "../utils/examTiming.js";
+import { issueCertificate } from "./certificate.controller.js";
 
 function normalizeAnswer(value = "") {
   return String(value).trim().replace(/\s+/g, " ").toLowerCase();
@@ -19,6 +20,7 @@ function isCorrectAnswer(question, selectedAnswer) {
   }
   return selectedAnswer === question.correctAnswer;
 }
+
 function attemptEndsAt(attempt) {
   const exam = attempt.examId;
   if (!exam || exam.isPaused) return null;
@@ -26,7 +28,7 @@ function attemptEndsAt(attempt) {
 }
 
 async function scoreAttempt(attempt, submittedAt = new Date()) {
-  const exam = attempt.examId?._id ? attempt.examId : await Exam.findById(attempt.examId);
+  const exam = attempt.examId?._id ? attempt.examId : await Exam.findById(attempt.examId).populate("courseId");
   if (!exam) return;
 
   const questions = await Question.find({ examId: exam._id });
@@ -35,14 +37,27 @@ async function scoreAttempt(attempt, submittedAt = new Date()) {
   const score = questions.reduce((total, question) => {
     return total + (isCorrectAnswer(question, answerMap.get(String(question._id))) ? question.marks : 0);
   }, 0);
-  const totalMarks = questions.reduce((total, question) => total + question.marks, 0) || exam.totalMarks;
-  const percentage = Math.round((score / totalMarks) * 10000) / 100;
+  const questionsTotalMarks = questions.reduce((total, question) => total + question.marks, 0);
+  const totalMarks = questionsTotalMarks > 0 ? questionsTotalMarks : exam.totalMarks;
+  const roundedScore = Math.round(score * 100) / 100;
+  const percentage = totalMarks > 0 ? Math.round((roundedScore / totalMarks) * 10000) / 100 : 0;
 
-  attempt.score = score;
+  attempt.score = roundedScore;
   attempt.percentage = percentage;
   attempt.status = percentage >= exam.passPercentage ? "PASS" : "FAIL";
   attempt.submittedAt = submittedAt;
   await attempt.save();
+
+  const student = attempt.studentId?._id ? attempt.studentId : await User.findById(attempt.studentId);
+  if (student && (attempt.status === "PASS" || attempt.status === "FAIL")) {
+    await issueCertificate({
+      attempt,
+      student,
+      exam,
+      course: exam.courseId,
+      totalMarks
+    });
+  }
 }
 
 async function finalizeExpiredAttempts() {
@@ -65,7 +80,6 @@ async function examIdsForCourse(courseId) {
 async function studentIdsForFilters({ search, batchYear }) {
   if (!search && !batchYear) return null;
   const studentQuery = { role: "STUDENT" };
-  if (batchYear) studentQuery.batchYear = Number(batchYear);
   if (search) {
     const term = String(search).trim().replace(/[.*+?^$()|[\]\\]/g, "\\$&");
     studentQuery.$or = [

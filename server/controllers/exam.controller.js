@@ -281,10 +281,12 @@ export async function submitExam(req, res, next) {
     const score = questions.reduce((total, question) => {
       return total + (isCorrectAnswer(question, answerMap.get(String(question._id))) ? question.marks : 0);
     }, 0);
-    const totalMarks = questions.reduce((total, question) => total + question.marks, 0) || exam.totalMarks;
-    const percentage = Math.round((score / totalMarks) * 10000) / 100;
+    const questionsTotalMarks = questions.reduce((total, question) => total + question.marks, 0);
+    const totalMarks = questionsTotalMarks > 0 ? questionsTotalMarks : exam.totalMarks;
+    const roundedScore = Math.round(score * 100) / 100;
+    const percentage = totalMarks > 0 ? Math.round((roundedScore / totalMarks) * 10000) / 100 : 0;
 
-    attempt.score = score;
+    attempt.score = roundedScore;
     attempt.percentage = percentage;
     attempt.status = percentage >= exam.passPercentage ? "PASS" : "FAIL";
     attempt.submittedAt = new Date();
@@ -293,7 +295,7 @@ export async function submitExam(req, res, next) {
     await exam.populate("courseId");
     const certificate = await issueCertificate({ attempt, student: req.user, exam, course: exam.courseId, totalMarks });
 
-    await logActivity(req, "SUBMIT_EXAM", `Submitted exam: "${exam.title}". Score: ${score}/${totalMarks} (${percentage}%, status: ${attempt.status})`);
+    await logActivity(req, "SUBMIT_EXAM", `Submitted exam: "${exam.title}". Score: ${roundedScore}/${totalMarks} (${percentage}%, status: ${attempt.status})`);
 
     res.json({
       attempt,
@@ -308,13 +310,12 @@ export async function submitExam(req, res, next) {
         trainingType: req.user.trainingTaken || exam.courseId?.courseName || "",
         courseName: exam.courseId?.courseName || "",
         examName: exam.title,
-        score,
+        score: roundedScore,
         totalMarks,
         percentage,
         status: attempt.status,
         submittedAt: attempt.submittedAt
       }
-    });
   } catch (error) {
     next(error);
   }

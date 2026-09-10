@@ -117,6 +117,11 @@ export async function drawResultImage(canvas, result) {
   const statusColor = passed ? "#07965f" : "#d82323";
   const statusTint = passed ? "#e8f8f1" : "#fff0f0";
   const percentage = Number(result.percentage || 0);
+  const displayPercentage = Number.isFinite(percentage) ? (Number.isInteger(percentage) ? percentage : Number(percentage.toFixed(2))) : 0;
+  const scoreNum = Number(result.score || 0);
+  const displayScore = Number.isFinite(scoreNum) ? (Number.isInteger(scoreNum) ? String(scoreNum) : Number(scoreNum.toFixed(2)).toString()) : "0";
+  const totalNum = Number(result.totalMarks || 0);
+  const displayTotal = Number.isFinite(totalNum) ? (Number.isInteger(totalNum) ? String(totalNum) : Number(totalNum.toFixed(2)).toString()) : "0";
 
   const background = ctx.createLinearGradient(0, 0, width, height);
   background.addColorStop(0, "#203a4a");
@@ -127,7 +132,7 @@ export async function drawResultImage(canvas, result) {
   ctx.fillRect(0, 0, width, height);
   drawConfetti(ctx, width);
 
-  const qrPayload = JSON.stringify({ organization: "Trade Ethiopia SBI", resultId: String(result.attemptId || ""), student: result.studentName, trainingType: result.trainingType, exam: result.examName, score: `${result.score}/${result.totalMarks}`, percentage: result.percentage, result: result.status, submittedAt: result.submittedAt });
+  const qrPayload = JSON.stringify({ organization: "Trade Ethiopia SBI", resultId: String(result.attemptId || ""), student: result.studentName, trainingType: result.trainingType, exam: result.examName, score: `${displayScore}/${displayTotal}`, percentage: displayPercentage, result: result.status, submittedAt: result.submittedAt });
   const [logo, qr] = await Promise.all([
     loadImage(logoUrl),
     loadImage(await QRCode.toDataURL(qrPayload, { width: 340, margin: 2, errorCorrectionLevel: "M" }))
@@ -226,15 +231,15 @@ export async function drawResultImage(canvas, result) {
   ctx.lineCap = "butt";
   ctx.fillStyle = INK;
   ctx.font = "800 36px Arial";
-  ctx.fillText(`${percentage}%`, 250, 1035);
+  ctx.fillText(`${displayPercentage}%`, 250, 1035);
   ctx.font = "700 16px Arial";
   ctx.fillText("SCORE", 250, 1068);
 
   label(ctx, "Marks obtained", 505, 995);
-  fittedText(ctx, result.score, 505, 1045, 190, 39);
+  fittedText(ctx, displayScore, 505, 1045, 190, 39);
   ctx.fillStyle = INK;
   ctx.font = "700 17px Arial";
-  ctx.fillText(`OUT OF ${result.totalMarks}`, 505, 1075);
+  ctx.fillText(`OUT OF ${displayTotal}`, 505, 1075);
   iconCircle(ctx, 835, 995, "☆");
   label(ctx, "Grade", 900, 997);
   ctx.fillStyle = statusColor;
