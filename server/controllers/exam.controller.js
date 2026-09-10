@@ -316,10 +316,12 @@ export async function submitExam(req, res, next) {
         status: attempt.status,
         submittedAt: attempt.submittedAt
       }
+    });
   } catch (error) {
     next(error);
   }
 }
+
 export async function pauseExam(req, res, next) {
   try {
     const exam = await Exam.findById(req.params.id);
