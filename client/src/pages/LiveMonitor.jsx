@@ -1,21 +1,34 @@
 import { useEffect, useState } from "react";
-import { Radio, RefreshCw, Clock, Users, ShieldAlert, Layers } from "lucide-react";
+import { Radio, RefreshCw, Clock, Users, Layers, PenLine } from "lucide-react";
 import DataTable from "../components/DataTable.jsx";
+import { useAuth } from "../context/AuthContext.jsx";
 import { api } from "../services/api.js";
 
+function formatRemaining(seconds) {
+  const total = Math.max(Number(seconds) || 0, 0);
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  return h ? `${h}h ${String(m).padStart(2, "0")}m` : `${m}m ${String(s).padStart(2, "0")}s`;
+}
+
 export default function LiveMonitor() {
+  const { isAdmin } = useAuth();
   const [onlineStudents, setOnlineStudents] = useState([]);
+  const [liveTakers, setLiveTakers] = useState([]);
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [activeSubTab, setActiveSubTab] = useState("online"); // "online" or "logs"
+  const [activeSubTab, setActiveSubTab] = useState("exam"); // "exam", "online" or "logs"
   const [autoRefresh, setAutoRefresh] = useState(true);
 
   function load() {
     setLoading(true);
     Promise.all([
+      api.get("/results/live"),
       api.get("/users/online"),
-      api.get("/users/activity-logs")
-    ]).then(([onlineRes, logsRes]) => {
+      isAdmin ? api.get("/users/activity-logs") : Promise.resolve({ data: [] })
+    ]).then(([liveRes, onlineRes, logsRes]) => {
+      setLiveTakers(liveRes.data);
       setOnlineStudents(onlineRes.data);
       setLogs(logsRes.data);
     }).catch(err => {
@@ -71,7 +84,7 @@ export default function LiveMonitor() {
             <Radio className="text-emerald-500 animate-pulse" size={28} /> Live Security Monitor
           </h1>
           <p className="mt-1 text-slate-500 dark:text-slate-400">
-            Real-time tracking of active student sessions, concurrent logins, and security activity logs.
+            Real-time tracking of students taking exams, active sessions{isAdmin ? ", and security activity logs" : ""}.
           </p>
         </div>
         <div className="grid gap-3 sm:flex sm:flex-wrap sm:items-center">
@@ -91,7 +104,17 @@ export default function LiveMonitor() {
         </div>
       </div>
 
-      <div className="grid gap-6 sm:grid-cols-2">
+      <div className={`grid gap-6 sm:grid-cols-2 ${isAdmin ? "xl:grid-cols-3" : ""}`}>
+        <div className="card flex min-w-0 items-center justify-between gap-3 p-4 sm:p-6 border-l-4 border-amber-500">
+          <div>
+            <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Taking Exam Now</p>
+            <p className="mt-2 text-3xl font-extrabold sm:text-4xl text-slate-900 dark:text-white">{liveTakers.length}</p>
+          </div>
+          <div className="h-12 w-12 rounded-xl bg-amber-50 dark:bg-amber-950/30 flex items-center justify-center text-amber-600 dark:text-amber-400">
+            <PenLine size={24} />
+          </div>
+        </div>
+
         <div className="card flex min-w-0 items-center justify-between gap-3 p-4 sm:p-6 border-l-4 border-emerald-500">
           <div>
             <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Online Students</p>
@@ -108,7 +131,7 @@ export default function LiveMonitor() {
           </div>
         </div>
 
-        <div className="card flex min-w-0 items-center justify-between gap-3 p-4 sm:p-6 border-l-4 border-blue-500">
+        {isAdmin && <div className="card flex min-w-0 items-center justify-between gap-3 p-4 sm:p-6 border-l-4 border-blue-500">
           <div>
             <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Recent Activity Count</p>
             <p className="mt-2 text-3xl font-extrabold sm:text-4xl text-slate-900 dark:text-white">{logs.length}</p>
@@ -116,25 +139,80 @@ export default function LiveMonitor() {
           <div className="h-12 w-12 rounded-xl bg-blue-50 dark:bg-blue-950/30 flex items-center justify-center text-blue-600 dark:text-blue-400">
             <Layers size={24} />
           </div>
-        </div>
+        </div>}
       </div>
 
       <div className="flex overflow-x-auto border-b border-slate-200 dark:border-slate-800">
+        <button
+          className={`shrink-0 px-4 py-3 sm:px-5 text-sm font-semibold border-b-2 transition ${activeSubTab === "exam" ? "border-emerald-500 text-emerald-600 dark:text-emerald-400" : "border-transparent text-slate-500 hover:text-slate-700"}`}
+          onClick={() => setActiveSubTab("exam")}
+        >
+          Taking Exam Now ({liveTakers.length})
+        </button>
         <button
           className={`shrink-0 px-4 py-3 sm:px-5 text-sm font-semibold border-b-2 transition ${activeSubTab === "online" ? "border-emerald-500 text-emerald-600 dark:text-emerald-400" : "border-transparent text-slate-500 hover:text-slate-700"}`}
           onClick={() => setActiveSubTab("online")}
         >
           Online Students ({onlineStudents.length})
         </button>
-        <button
+        {isAdmin && <button
           className={`shrink-0 px-4 py-3 sm:px-5 text-sm font-semibold border-b-2 transition ${activeSubTab === "logs" ? "border-emerald-500 text-emerald-600 dark:text-emerald-400" : "border-transparent text-slate-500 hover:text-slate-700"}`}
           onClick={() => setActiveSubTab("logs")}
         >
           Activity & Security Logs ({logs.length})
-        </button>
+        </button>}
       </div>
 
-      {activeSubTab === "online" ? (
+      {activeSubTab === "exam" ? (
+        <DataTable
+          columns={[
+            {
+              key: "student",
+              label: "Student",
+              render: (row) => (
+                <div className="flex items-center gap-3">
+                  <span className="relative flex h-2.5 w-2.5" title={row.isOnline ? "Connected" : "No request in the last 2 minutes"}>
+                    {row.isOnline && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>}
+                    <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${row.isOnline ? "bg-emerald-500" : "bg-slate-300"}`}></span>
+                  </span>
+                  <div>
+                    <p className="font-semibold text-slate-900 dark:text-slate-100">{row.student?.name}</p>
+                    <p className="font-mono text-xs text-slate-500">{row.student?.enrollmentNumber || row.student?.email}</p>
+                  </div>
+                </div>
+              )
+            },
+            {
+              key: "exam",
+              label: "Exam",
+              render: (row) => (
+                <div>
+                  <p className="font-medium">{row.exam?.title}</p>
+                  <p className="text-xs text-slate-500">{row.course?.courseName || ""}{row.isRetake ? " · Retake" : ""}</p>
+                </div>
+              )
+            },
+            { key: "startedAt", label: "Started", render: (row) => <span className="flex items-center gap-1.5 text-xs font-medium"><Clock size={13} />{new Date(row.startedAt).toLocaleTimeString()}</span> },
+            {
+              key: "progress",
+              label: "Progress",
+              render: (row) => {
+                const percent = row.totalQuestions ? Math.round((row.answeredCount / row.totalQuestions) * 100) : 0;
+                return (
+                  <div className="min-w-[8rem]">
+                    <p className="text-xs font-semibold">{row.answeredCount}/{row.totalQuestions} answered</p>
+                    <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700"><div className="h-full rounded-full bg-emerald-500" style={{ width: `${percent}%` }} /></div>
+                  </div>
+                );
+              }
+            },
+            { key: "remaining", label: "Time Left", render: (row) => row.exam?.isPaused ? <span className="rounded-full bg-orange-100 px-2.5 py-0.5 text-xs font-bold text-orange-700">Paused</span> : <span className={`font-mono text-sm font-semibold ${row.remainingSeconds < 300 ? "text-red-600" : ""}`}>{formatRemaining(row.remainingSeconds)}</span> },
+            { key: "violations", label: "Violations", render: (row) => <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${row.violationCount ? "bg-red-100 text-red-700" : "bg-slate-100 text-slate-600"}`}>{row.violationCount}/3</span> }
+          ]}
+          rows={liveTakers}
+          empty="No students are taking an exam right now."
+        />
+      ) : activeSubTab === "online" ? (
         <DataTable
           columns={[
             {
@@ -182,8 +260,8 @@ export default function LiveMonitor() {
               )
             },
             {
-              key: "student",
-              label: "Student",
+              key: "user",
+              label: "User",
               render: (row) => (
                 <div>
                   <p className="font-semibold text-slate-900 dark:text-slate-100">{row.userId?.name || "System"}</p>

@@ -32,7 +32,8 @@ export async function register(req, res, next) {
       currentSessionId: sessionId,
       lastActive: new Date()
     });
-    await logActivity(user._id, "REGISTER", "Registered a new account");
+    req.user = user;
+    await logActivity(req, "REGISTER", "Registered a new account");
     res.status(201).json({ token: signToken(user), user: sanitizeUser(user) });
   } catch (error) {
     next(error);
@@ -58,7 +59,8 @@ export async function login(req, res, next) {
     user.lastActive = new Date();
     await user.save();
 
-    await logActivity(user._id, "LOGIN", `Logged in successfully via ${user.role === "STUDENT" ? "student" : user.role === "ADMIN" ? "admin" : "customer service"} portal`);
+    req.user = user;
+    await logActivity(req, "LOGIN", `Logged in successfully via ${user.role === "STUDENT" ? "student" : user.role === "ADMIN" ? "admin" : "customer service"} portal`);
 
     res.json({ token: signToken(user), user: sanitizeUser(user) });
   } catch (error) {

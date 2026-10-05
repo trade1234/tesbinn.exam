@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
-import { changePassword, createStudent, deleteStudent, exportStudentRegistrationsExcel, exportStudentRegistrationsPdf, listStudents, setStudentActive, studentDashboard, listOnlineStudents, listActivityLogs, updateStudent } from "../controllers/user.controller.js";
+import { changePassword, searchActivityLogs, createStudent, deleteStudent, exportStudentRegistrationsExcel, exportStudentRegistrationsPdf, listStudents, setStudentActive, studentDashboard, listOnlineStudents, listActivityLogs, updateStudent } from "../controllers/user.controller.js";
 import { createAccount, createAccountSchema, deleteAccount, listAccounts, updateAccount, updateAccountSchema } from "../controllers/account.controller.js";
 import { authorize, protect } from "../middlewares/auth.js";
 import { validate } from "../middlewares/validate.js";
@@ -35,8 +35,9 @@ router.get("/accounts", protect, authorize("ADMIN"), listAccounts);
 router.post("/accounts", protect, authorize("ADMIN"), validate(createAccountSchema), createAccount);
 router.patch("/accounts/:id", protect, authorize("ADMIN"), validate(updateAccountSchema), updateAccount);
 router.delete("/accounts/:id", protect, authorize("ADMIN"), deleteAccount);
-router.get("/online", protect, authorize("ADMIN"), listOnlineStudents);
+router.get("/online", protect, authorize("ADMIN", "CUSTOMER_SERVICE"), listOnlineStudents);
 router.get("/activity-logs", protect, authorize("ADMIN"), listActivityLogs);
+router.get("/activity-logs/search", protect, authorize("ADMIN"), searchActivityLogs);
 router.get("/dashboard/student", protect, authorize("STUDENT"), studentDashboard);
 router.patch("/change-password", protect, validate(z.object({ body: z.object({
   currentPassword: z.string().min(1),

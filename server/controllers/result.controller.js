@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import PDFDocument from "pdfkit";
 import ExcelJS from "exceljs";
 import { Answer } from "../models/Answer.js";
@@ -7,7 +8,7 @@ import { Question } from "../models/Question.js";
 import { User } from "../models/User.js";
 import { Course } from "../models/Course.js";
 import { Application } from "../models/Application.js";
-import { scheduledExamEnd } from "../utils/examTiming.js";
+import { scheduledExamEnd, scheduledRemainingSeconds } from "../utils/examTiming.js";
 import { issueCertificate } from "./certificate.controller.js";
 
 function normalizeAnswer(value = "") {
@@ -144,6 +145,52 @@ export async function listActiveAttempts(req, res, next) {
       .populate({ path: "examId", populate: { path: "courseId" } })
       .sort({ startedAt: -1 });
     res.json(activeAttempts);
+  } catch (error) {
+    next(error);
+  }
+}
+
+// Students who are in an exam right now, with progress for the live monitor.
+export async function listLiveExamTakers(req, res, next) {
+  try {
+    await finalizeExpiredAttempts();
+
+    const attempts = await ExamAttempt.find({ status: "IN_PROGRESS" })
+      .populate("studentId", "name email enrollmentNumber batchYear trainingTaken lastActive")
+      .populate({ path: "examId", populate: { path: "courseId", select: "courseName courseCode" } })
+      .sort({ startedAt: -1 })
+      .lean();
+    const live = attempts.filter((attempt) => attempt.studentId && attempt.examId);
+
+    const attemptIds = live.map((attempt) => attempt._id);
+    const examIds = [...new Set(live.map((attempt) => String(attempt.examId._id)))];
+    const [answerCounts, questionCounts] = await Promise.all([
+      Answer.aggregate([
+        { $match: { attemptId: { $in: attemptIds }, selectedAnswer: { $nin: ["", null] } } },
+        { $group: { _id: "$attemptId", count: { $sum: 1 } } }
+      ]),
+      Question.aggregate([
+        { $match: { examId: { $in: examIds.map((id) => new mongoose.Types.ObjectId(id)) } } },
+        { $group: { _id: "$examId", count: { $sum: 1 } } }
+      ])
+    ]);
+    const answered = new Map(answerCounts.map((row) => [String(row._id), row.count]));
+    const totals = new Map(questionCounts.map((row) => [String(row._id), row.count]));
+    const onlineSince = Date.now() - 2 * 60 * 1000;
+
+    res.json(live.map((attempt) => ({
+      _id: attempt._id,
+      student: attempt.studentId,
+      exam: { _id: attempt.examId._id, title: attempt.examId.title, durationMinutes: attempt.examId.durationMinutes, endDate: attempt.examId.endDate, isPaused: attempt.examId.isPaused },
+      course: attempt.examId.courseId || null,
+      startedAt: attempt.startedAt,
+      remainingSeconds: scheduledRemainingSeconds(attempt.examId),
+      answeredCount: answered.get(String(attempt._id)) || 0,
+      totalQuestions: totals.get(String(attempt.examId._id)) || 0,
+      violationCount: attempt.violationCount || 0,
+      isRetake: Boolean(attempt.retakeGrantedAt),
+      isOnline: Boolean(attempt.studentId.lastActive && new Date(attempt.studentId.lastActive).getTime() >= onlineSince)
+    })));
   } catch (error) {
     next(error);
   }

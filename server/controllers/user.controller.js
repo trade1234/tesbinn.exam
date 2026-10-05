@@ -265,6 +265,64 @@ export async function listOnlineStudents(req, res, next) {
   }
 }
 
+function escapeRegex(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+export async function searchActivityLogs(req, res, next) {
+  try {
+    const page = Math.max(Number.parseInt(req.query.page, 10) || 1, 1);
+    const limit = Math.min(Math.max(Number.parseInt(req.query.limit, 10) || 50, 1), 200);
+    const filters = [];
+
+    if (["ADMIN", "CUSTOMER_SERVICE", "STUDENT"].includes(req.query.role)) {
+      // Older entries were written before the role was stored on the log itself.
+      const roleUserIds = await User.find({ role: req.query.role }).distinct("_id");
+      filters.push({ $or: [{ role: req.query.role }, { role: { $in: ["", null] }, userId: { $in: roleUserIds } }] });
+    }
+    if (req.query.action) filters.push({ action: String(req.query.action) });
+    if (req.query.userId) filters.push({ userId: String(req.query.userId) });
+
+    const term = String(req.query.search || "").trim();
+    if (term) {
+      const pattern = new RegExp(escapeRegex(term), "i");
+      const matchingUsers = await User.find({ $or: [{ name: pattern }, { email: pattern }, { enrollmentNumber: pattern }] }).distinct("_id");
+      filters.push({ $or: [{ details: pattern }, { action: pattern }, { userId: { $in: matchingUsers } }] });
+    }
+
+    const createdAt = {};
+    if (req.query.from) createdAt.$gte = new Date(req.query.from);
+    if (req.query.to) {
+      const to = new Date(req.query.to);
+      if (/^\d{4}-\d{2}-\d{2}$/.test(String(req.query.to))) to.setHours(23, 59, 59, 999);
+      createdAt.$lte = to;
+    }
+    if (Object.keys(createdAt).length) filters.push({ createdAt });
+
+    const query = filters.length ? { $and: filters } : {};
+    const [items, total, actions] = await Promise.all([
+      ActivityLog.find(query)
+        .populate("userId", "name email role enrollmentNumber")
+        .sort({ createdAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .lean(),
+      ActivityLog.countDocuments(query),
+      ActivityLog.distinct("action")
+    ]);
+
+    res.json({
+      items: items.map((item) => ({ ...item, role: item.role || item.userId?.role || "" })),
+      total,
+      page,
+      pages: Math.max(Math.ceil(total / limit), 1),
+      actions: actions.sort()
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function listActivityLogs(req, res, next) {
   try {
     const logs = await ActivityLog.find()

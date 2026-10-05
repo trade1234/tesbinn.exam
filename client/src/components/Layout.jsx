@@ -1,4 +1,4 @@
-import { AlertCircle, Award, Headset, QrCode, UserCog, BarChart3, Bell, BookOpen, ChevronDown, ClipboardList, Clock3, FileBarChart, FileCheck2, FileSpreadsheet, Home, LogOut, Moon, Radio, RotateCcw, Search, Settings, ShieldAlert, Sun, UserRound, Users } from "lucide-react";
+import { AlertCircle, Award, Headset, History, QrCode, UserCog, BarChart3, Bell, BookOpen, ChevronDown, ClipboardList, Clock3, FileBarChart, FileCheck2, FileSpreadsheet, Home, LogOut, Moon, Radio, RotateCcw, Search, Settings, ShieldAlert, Sun, UserRound, Users } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -145,7 +145,8 @@ export default function Layout({ role }) {
     { to: "/admin/retakes", label: "Retake Users", icon: RotateCcw },
     { to: "/admin/disqualified", label: "Disqualified", icon: ShieldAlert },
     { to: "/admin/monitor", label: "Live Monitor", icon: Radio },
-    { to: "/admin/accounts", label: "Account Management", icon: UserCog }
+    { to: "/admin/accounts", label: "Account Management", icon: UserCog },
+    { to: "/admin/activity-logs", label: "Activity Logs", icon: History }
   ];
   const studentLinks = [
     { to: "/student", label: "Dashboard", icon: Home },
@@ -157,7 +158,8 @@ export default function Layout({ role }) {
   const supportLinks = [
     { to: "/support", label: "Dashboard", icon: Headset },
     { to: "/support/exams", label: "Exams & Schedule", icon: ClipboardList },
-    { to: "/support/retakes", label: "Retake Exams", icon: RotateCcw }
+    { to: "/support/retakes", label: "Retake Exams", icon: RotateCcw },
+    { to: "/support/monitor", label: "Live Monitor", icon: Radio }
   ];
   const links = role === "ADMIN" ? adminLinks : role === "CUSTOMER_SERVICE" ? supportLinks : studentLinks;
   const roleTitle = role === "ADMIN" ? "Admin" : role === "CUSTOMER_SERVICE" ? "Support" : "Exams";

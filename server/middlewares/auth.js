@@ -1,6 +1,7 @@
 import jwt from "jsonwebtoken";
 import { env } from "../config/env.js";
 import { User } from "../models/User.js";
+import { auditStaffActions } from "../utils/logger.js";
 
 export async function protect(req, res, next) {
   try {
@@ -28,6 +29,7 @@ export async function protect(req, res, next) {
     }
 
     req.user = user;
+    auditStaffActions(req, res);
     next();
   } catch {
     res.status(401).json({ message: "Invalid or expired token" });
