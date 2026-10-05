@@ -3,6 +3,7 @@ import { AlertTriangle, CalendarClock, Clock3, Eye, PauseCircle, Pencil, PlayCir
 import DataTable from "../components/DataTable.jsx";
 import Modal from "../components/Modal.jsx";
 import { api } from "../services/api.js";
+import { useAuth } from "../context/AuthContext.jsx";
 
 const blankExam = { courseId: "", title: "", description: "", durationMinutes: 30, extraTimeMinutes: 0, totalMarks: 10, passPercentage: 50, startDate: "" };
 const blankQuestion = { examId: "", questionType: "MULTIPLE_CHOICE", questionText: "", optionA: "", optionB: "", optionC: "", optionD: "", correctAnswer: "A", marks: 1, order: 0 };
@@ -205,6 +206,7 @@ function toExamPayload(exam, overrides = {}) {
 }
 
 export default function ExamManagement() {
+  const { isAdmin } = useAuth();
   const [courses, setCourses] = useState([]);
   const [exams, setExams] = useState([]);
   const [questions, setQuestions] = useState([]);
@@ -631,10 +633,10 @@ export default function ExamManagement() {
         <button className="btn-primary min-h-11 w-full px-6 sm:w-auto" type="button" onClick={startSelectedExam} disabled={!selectedStartExam || savingId === selectedStartExam?._id}>
           <PlayCircle size={18} /> {savingId === selectedStartExam?._id ? "Starting..." : "Start Exam"}
         </button>
-        <button className={`inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg px-6 sm:w-auto py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${selectedStartExam?.isPaused ? "bg-emerald-600 text-white hover:bg-emerald-700" : "bg-orange-500 text-white hover:bg-orange-600"}`} type="button" onClick={toggleSelectedPause} disabled={!selectedStartExam || savingId === selectedStartExam?._id}>
+        {isAdmin && <button className={`inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg px-6 sm:w-auto py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${selectedStartExam?.isPaused ? "bg-emerald-600 text-white hover:bg-emerald-700" : "bg-orange-500 text-white hover:bg-orange-600"}`} type="button" onClick={toggleSelectedPause} disabled={!selectedStartExam || savingId === selectedStartExam?._id}>
           {selectedStartExam?.isPaused ? <PlayCircle size={18} /> : <PauseCircle size={18} />}
           {selectedStartExam?.isPaused ? "Resume Exam" : "Pause Exam"}
-        </button>
+        </button>}
       </section>
 
       <DataTable columns={[
@@ -650,7 +652,7 @@ export default function ExamManagement() {
         { key: "startDate", label: "Starts", render: (row) => formatDateTime(row.startDate) },
         { key: "endDate", label: "Ends", render: (row) => formatDateTime(row.endDate) },
         { key: "actions", label: "Actions", render: (row) => (
-          <div className="flex items-center gap-2"><ActionIconButton label="Edit schedule" icon={CalendarClock} onClick={() => openEditSchedule(row)} tone="amber" /><ActionIconButton label="Edit questions" icon={Pencil} onClick={() => manageExamQuestions(row)} tone="blue" /><ActionIconButton label="Delete exam" icon={Trash2} onClick={() => setDeleteTarget(row)} tone="red" /></div>
+          <div className="flex items-center gap-2"><ActionIconButton label="Edit schedule" icon={CalendarClock} onClick={() => openEditSchedule(row)} tone="amber" /><ActionIconButton label="Edit questions" icon={Pencil} onClick={() => manageExamQuestions(row)} tone="blue" />{isAdmin && <ActionIconButton label="Delete exam" icon={Trash2} onClick={() => setDeleteTarget(row)} tone="red" />}</div>
         ) }
       ]} rows={exams} />
       <section id="exam-questions" className="space-y-4 rounded-xl border border-blue-100 bg-white p-4 shadow-soft dark:border-slate-800 dark:bg-[#111a2b]">

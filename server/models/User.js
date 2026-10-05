@@ -10,7 +10,7 @@ const userSchema = new mongoose.Schema(
     trainingTaken: { type: String, trim: true, default: "" },
     password: { type: String, required: true, minlength: 5, select: false },
     generatedPassword: { type: String, select: false },
-    role: { type: String, enum: ["ADMIN", "STUDENT"], default: "STUDENT" },
+    role: { type: String, enum: ["ADMIN", "CUSTOMER_SERVICE", "STUDENT"], default: "STUDENT" },
     isActive: { type: Boolean, default: true },
     currentSessionId: { type: String, default: "" },
     lastActive: { type: Date },

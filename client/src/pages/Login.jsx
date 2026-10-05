@@ -3,6 +3,7 @@ import { useForm } from "react-hook-form";
 import { Navigate, useNavigate } from "react-router-dom";
 import { ArrowLeft, Eye, Lock, Monitor, UserRound } from "lucide-react";
 import { useAuth } from "../context/AuthContext.jsx";
+import { roleHome } from "../routes/roleHome.js";
 import { apiBaseURL } from "../services/api.js";
 import logoUrl from "../logo/download.png";
 
@@ -19,14 +20,14 @@ export default function Login() {
     defaultValues: { identifier: "", password: "" }
   });
 
-  if (user) return <Navigate to={user.role === "ADMIN" ? "/admin" : "/student"} replace />;
+  if (user) return <Navigate to={roleHome(user.role)} replace />;
 
   async function onSubmit(values) {
     setError("");
     setSessionExpired(false);
     try {
       const loggedIn = await login({ identifier: values.identifier, password: values.password });
-      navigate(loggedIn.role === "ADMIN" ? "/admin" : "/student");
+      navigate(roleHome(loggedIn.role));
     } catch (err) {
       if (err.response?.data?.message) {
         setError(err.response.data.message);

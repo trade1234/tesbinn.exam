@@ -33,7 +33,7 @@ export const questionSchema = z.object({
 export async function listQuestions(req, res, next) {
   try {
     const query = req.query.examId ? { examId: req.query.examId } : {};
-    const projection = req.user.role === "ADMIN" ? "" : "-correctAnswer";
+    const projection = req.user.role === "STUDENT" ? "-correctAnswer" : "";
     res.json(await Question.find(query).select(projection).populate("examId", "title courseId").sort({ createdAt: -1, order: -1 }));
   } catch (error) {
     next(error);

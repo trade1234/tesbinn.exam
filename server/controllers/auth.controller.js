@@ -9,8 +9,7 @@ export const registerSchema = z.object({
     name: z.string().min(2),
     email: z.string().email(),
     enrollmentNumber: z.string().optional(),
-    password: z.string().length(5).regex(/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]+$/),
-    role: z.enum(["ADMIN", "STUDENT"]).default("STUDENT")
+    password: z.string().length(5).regex(/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]+$/)
   })
 });
 
@@ -29,6 +28,7 @@ export async function register(req, res, next) {
     const sessionId = crypto.randomUUID();
     const user = await User.create({
       ...req.body,
+      role: "STUDENT",
       currentSessionId: sessionId,
       lastActive: new Date()
     });
@@ -58,7 +58,7 @@ export async function login(req, res, next) {
     user.lastActive = new Date();
     await user.save();
 
-    await logActivity(user._id, "LOGIN", `Logged in successfully via ${user.role.toLowerCase() === "admin" ? "admin" : "student"} portal`);
+    await logActivity(user._id, "LOGIN", `Logged in successfully via ${user.role === "STUDENT" ? "student" : user.role === "ADMIN" ? "admin" : "customer service"} portal`);
 
     res.json({ token: signToken(user), user: sanitizeUser(user) });
   } catch (error) {

@@ -24,6 +24,8 @@ import DataExports from "./pages/DataExports.jsx";
 import VerifyCertificate from "./pages/VerifyCertificate.jsx";
 import DataAnalytics from "./pages/DataAnalytics.jsx";
 import CertificateAccess from "./pages/CertificateAccess.jsx";
+import AccountManagement from "./pages/AccountManagement.jsx";
+import CustomerServiceDashboard from "./pages/CustomerServiceDashboard.jsx";
 
 export default function App() {
   return (
@@ -45,9 +47,17 @@ export default function App() {
           <Route path="/admin/certificates" element={<Certificates />} />
           <Route path="/admin/certificates/:id" element={<Certificates />} />
           <Route path="/admin/certificate-access" element={<CertificateAccess />} />
+          <Route path="/admin/accounts" element={<AccountManagement />} />
           <Route path="/admin/retakes" element={<RetakeUsers />} />
           <Route path="/admin/disqualified" element={<DisqualifiedStudents />} />
           <Route path="/admin/monitor" element={<LiveMonitor />} />
+        </Route>
+      </Route>
+      <Route element={<ProtectedRoute role="CUSTOMER_SERVICE" />}>
+        <Route element={<Layout role="CUSTOMER_SERVICE" />}>
+          <Route path="/support" element={<CustomerServiceDashboard />} />
+          <Route path="/support/exams" element={<ExamManagement />} />
+          <Route path="/support/retakes" element={<RetakeUsers />} />
         </Route>
       </Route>
       <Route element={<ProtectedRoute role="STUDENT" />}>

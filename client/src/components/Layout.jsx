@@ -1,4 +1,4 @@
-import { AlertCircle, Award, QrCode, BarChart3, Bell, BookOpen, ChevronDown, ClipboardList, Clock3, FileBarChart, FileCheck2, FileSpreadsheet, Home, LogOut, Moon, Radio, RotateCcw, Search, Settings, ShieldAlert, Sun, UserRound, Users } from "lucide-react";
+import { AlertCircle, Award, Headset, QrCode, UserCog, BarChart3, Bell, BookOpen, ChevronDown, ClipboardList, Clock3, FileBarChart, FileCheck2, FileSpreadsheet, Home, LogOut, Moon, Radio, RotateCcw, Search, Settings, ShieldAlert, Sun, UserRound, Users } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -92,8 +92,8 @@ export default function Layout({ role }) {
             });
           }
 
-          const { data: activeAttempts } = await api.get("/results/active");
-          if (!stopped) {
+          const { data: activeAttempts } = role === "ADMIN" ? await api.get("/results/active") : { data: null };
+          if (!stopped && activeAttempts) {
             items.push({
               id: "admin-active-attempts",
               title: `${activeAttempts.length} active student session${activeAttempts.length === 1 ? "" : "s"}`,
@@ -144,7 +144,8 @@ export default function Layout({ role }) {
     { to: "/admin/certificate-access", label: "Certificate Access", icon: QrCode },
     { to: "/admin/retakes", label: "Retake Users", icon: RotateCcw },
     { to: "/admin/disqualified", label: "Disqualified", icon: ShieldAlert },
-    { to: "/admin/monitor", label: "Live Monitor", icon: Radio }
+    { to: "/admin/monitor", label: "Live Monitor", icon: Radio },
+    { to: "/admin/accounts", label: "Account Management", icon: UserCog }
   ];
   const studentLinks = [
     { to: "/student", label: "Dashboard", icon: Home },
@@ -153,8 +154,19 @@ export default function Layout({ role }) {
     { to: "/student/certificates", label: "Certificates", icon: Award },
     { to: "/student/profile", label: "Profile", icon: Settings }
   ];
-  const links = role === "ADMIN" ? adminLinks : studentLinks;
-  const groups = role === "ADMIN"
+  const supportLinks = [
+    { to: "/support", label: "Dashboard", icon: Headset },
+    { to: "/support/exams", label: "Exams & Schedule", icon: ClipboardList },
+    { to: "/support/retakes", label: "Retake Exams", icon: RotateCcw }
+  ];
+  const links = role === "ADMIN" ? adminLinks : role === "CUSTOMER_SERVICE" ? supportLinks : studentLinks;
+  const roleTitle = role === "ADMIN" ? "Admin" : role === "CUSTOMER_SERVICE" ? "Support" : "Exams";
+  const groups = role === "CUSTOMER_SERVICE"
+    ? [
+      { label: "Create Exam", to: "/support/exams" },
+      { label: "Retakes", to: "/support/retakes" }
+    ]
+    : role === "ADMIN"
     ? [
       { label: "Courses", to: "/admin/courses" },
       { label: "Exams", to: "/admin/exams" },
@@ -194,7 +206,7 @@ export default function Layout({ role }) {
                   <img className="h-full w-full object-contain" src={logoUrl} alt="Trade Ethiopia logo" />
                 </div>
                 <div>
-                  <p className="text-2xl font-semibold tracking-tight">{role === "ADMIN" ? "Admin" : "Exams"}</p>
+                  <p className="text-2xl font-semibold tracking-tight">{roleTitle}</p>
                   <p className="text-xs text-slate-400 dark:text-slate-500">Trade Ethiopia SBI</p>
                 </div>
               </div>
@@ -276,7 +288,7 @@ export default function Layout({ role }) {
                 </div>
                 <div className="min-w-0">
                   <p className="truncate text-[11px] font-bold min-[420px]:text-sm text-slate-950 dark:text-slate-100">Trade Ethiopia SBI</p>
-                  <p className="hidden truncate text-xs text-slate-500 dark:text-slate-400 min-[420px]:block dark:text-slate-400">{role === "ADMIN" ? "Admin" : "Exams"}</p>
+                  <p className="hidden truncate text-xs text-slate-500 dark:text-slate-400 min-[420px]:block dark:text-slate-400">{roleTitle}</p>
                 </div>
               </div>
                 <div className="hidden min-w-0 flex-1 items-center gap-4 sm:flex">
@@ -298,7 +310,7 @@ export default function Layout({ role }) {
                       <div className="absolute right-0 top-12 z-50 w-[min(360px,calc(100vw-2rem))] overflow-hidden rounded-xl border border-slate-100 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.22)] dark:border-slate-800 dark:bg-[#111a2b]">
                         <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 dark:border-slate-800">
                           <p className="font-bold text-slate-950 dark:text-slate-100">Notifications</p>
-                          <p className="text-xs font-semibold text-slate-400">{role === "ADMIN" ? "Admin" : "Student"}</p>
+                          <p className="text-xs font-semibold text-slate-400">{role === "ADMIN" ? "Admin" : role === "CUSTOMER_SERVICE" ? "Customer Service" : "Student"}</p>
                         </div>
                         <div className="max-h-96 overflow-y-auto p-2">
                           {notifications.length ? notifications.map((item) => (
@@ -339,8 +351,8 @@ export default function Layout({ role }) {
                           </div>
                         </div>
                         <div className="p-2">
-                          <button className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800" type="button" onClick={() => { setProfileOpen(false); navigate(role === "ADMIN" ? "/admin" : "/student/profile"); }}>
-                            <UserRound size={17} /> {role === "ADMIN" ? "Admin Dashboard" : "My Profile"}
+                          <button className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800" type="button" onClick={() => { setProfileOpen(false); navigate(role === "ADMIN" ? "/admin" : role === "CUSTOMER_SERVICE" ? "/support" : "/student/profile"); }}>
+                            <UserRound size={17} /> {role === "ADMIN" ? "Admin Dashboard" : role === "CUSTOMER_SERVICE" ? "Dashboard" : "My Profile"}
                           </button>
                           <button className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800" type="button" onClick={() => setDarkMode((value) => !value)}>
                             {darkMode ? <Sun size={17} /> : <Moon size={17} />} {darkMode ? "Light Mode" : "Dark Mode"}
