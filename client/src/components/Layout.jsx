@@ -1,4 +1,4 @@
-import { AlertCircle, Award, BarChart3, Bell, BookOpen, ChevronDown, ClipboardList, Clock3, FileBarChart, FileCheck2, FileSpreadsheet, Home, LogOut, Moon, Radio, RotateCcw, Search, Settings, ShieldAlert, Sun, UserRound, Users } from "lucide-react";
+import { AlertCircle, Award, QrCode, BarChart3, Bell, BookOpen, ChevronDown, ClipboardList, Clock3, FileBarChart, FileCheck2, FileSpreadsheet, Home, LogOut, Moon, Radio, RotateCcw, Search, Settings, ShieldAlert, Sun, UserRound, Users } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -141,6 +141,7 @@ export default function Layout({ role }) {
     { to: "/admin/analytics", label: "Data Analytics", icon: BarChart3 },
     { to: "/admin/results", label: "Results", icon: FileBarChart },
     { to: "/admin/certificates", label: "Certificates", icon: Award },
+    { to: "/admin/certificate-access", label: "Certificate Access", icon: QrCode },
     { to: "/admin/retakes", label: "Retake Users", icon: RotateCcw },
     { to: "/admin/disqualified", label: "Disqualified", icon: ShieldAlert },
     { to: "/admin/monitor", label: "Live Monitor", icon: Radio }

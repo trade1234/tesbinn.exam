@@ -4,7 +4,10 @@ const courseSchema = new mongoose.Schema(
   {
     courseName: { type: String, required: true, trim: true },
     courseCode: { type: String, required: true, unique: true, uppercase: true, trim: true },
-    description: { type: String, default: "" }
+    description: { type: String, default: "" },
+    certificatesVisible: { type: Boolean, default: true },
+    certificatesActive: { type: Boolean, default: true },
+    certificateDeactivationReason: { type: String, default: "", trim: true }
   },
   { timestamps: true }
 );

@@ -7,7 +7,7 @@ import { courseMatchesTraining, findAssignedCourseForStudent } from "../utils/co
 import { logActivity } from "../utils/logger.js";
 import { scheduledExamEnd, scheduledRemainingSeconds } from "../utils/examTiming.js";
 import { canGrantRetake } from "../utils/retakePolicy.js";
-import { issueCertificate } from "./certificate.controller.js";
+import { isCertificateVisibleToStudent, issueCertificate } from "./certificate.controller.js";
 
 function normalizeAnswer(value = "") {
   return String(value).trim().replace(/\s+/g, " ").toLowerCase();
@@ -293,7 +293,8 @@ export async function submitExam(req, res, next) {
     await attempt.save();
 
     await exam.populate("courseId");
-    const certificate = await issueCertificate({ attempt, student: req.user, exam, course: exam.courseId, totalMarks });
+    const issued = await issueCertificate({ attempt, student: req.user, exam, course: exam.courseId, totalMarks });
+    const certificate = (await isCertificateVisibleToStudent(issued)) ? issued : null;
 
     await logActivity(req, "SUBMIT_EXAM", `Submitted exam: "${exam.title}". Score: ${roundedScore}/${totalMarks} (${percentage}%, status: ${attempt.status})`);
 
