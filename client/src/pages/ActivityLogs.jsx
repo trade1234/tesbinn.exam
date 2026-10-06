@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, History, RefreshCw, Search, X } from "lucide
 import DataTable from "../components/DataTable.jsx";
 import { api } from "../services/api.js";
 import { TableSkeleton } from "../components/Skeleton.jsx";
+import { activityAction, activityDetails, actionLabel } from "../utils/activityLog.js";
 
 const ROLE_OPTIONS = [
   ["", "All users"],
@@ -81,8 +82,8 @@ export default function ActivityLogs() {
         </div>
       )
     },
-    { key: "action", label: "Action", render: (row) => <span className={`whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-bold ${actionTone(row.action)}`}>{row.action.replace(/_/g, " ")}</span> },
-    { key: "details", label: "Details", render: (row) => <span className="break-words text-sm">{row.details || "--"}</span> },
+    { key: "action", label: "Action", render: (row) => <span className={`whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-bold ${actionTone(activityAction(row))}`}>{actionLabel(activityAction(row))}</span> },
+    { key: "details", label: "Details", render: (row) => <span className="break-words text-sm">{activityDetails(row)}</span> },
     { key: "source", label: "IP / Device", render: (row) => <div className="text-xs text-slate-500"><p className="font-mono">{row.ipAddress || "--"}</p><p title={row.userAgent}>{device(row.userAgent)}</p></div> }
   ];
 
@@ -106,7 +107,7 @@ export default function ActivityLogs() {
         <label className="relative"><Search className="absolute left-3 top-3 text-slate-400" size={17} /><input className="input pl-9" placeholder="User name, email, or details" value={filters.search} onChange={(e) => setFilters({ ...filters, search: e.target.value })} /></label>
         <select className="input" value={filters.action} onChange={(e) => setFilters({ ...filters, action: e.target.value })}>
           <option value="">All actions</option>
-          {data.actions.map((action) => <option key={action} value={action}>{action.replace(/_/g, " ")}</option>)}
+          {data.actions.map((action) => <option key={action} value={action}>{actionLabel(action)}</option>)}
         </select>
         <input className="input" type="date" aria-label="From date" value={filters.from} onChange={(e) => setFilters({ ...filters, from: e.target.value })} />
         <input className="input" type="date" aria-label="To date" value={filters.to} onChange={(e) => setFilters({ ...filters, to: e.target.value })} />

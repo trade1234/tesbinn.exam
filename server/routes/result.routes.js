@@ -7,7 +7,7 @@ const router = Router();
 router.get("/", protect, authorize("ADMIN", "STUDENT"), listResults);
 router.get("/active", protect, authorize("ADMIN"), listActiveAttempts);
 router.get("/live", protect, authorize("ADMIN"), listLiveExamTakers);
-router.get("/disqualified", protect, authorize("ADMIN"), listDisqualifiedAttempts);
+router.get("/disqualified", protect, authorize("ADMIN", "CUSTOMER_SERVICE"), listDisqualifiedAttempts);
 router.get("/disqualification-history", protect, authorize("ADMIN"), listDisqualificationHistory);
 router.get("/analytics", protect, authorize("ADMIN"), analytics);
 router.get("/analytics/courses", protect, authorize("ADMIN"), courseAnalytics);

@@ -14,14 +14,26 @@ const userSchema = new mongoose.Schema(
     isActive: { type: Boolean, default: true },
     currentSessionId: { type: String, default: "" },
     lastActive: { type: Date },
-    resetPasswordToken: String,
-    resetPasswordExpires: Date
+    passwordChangedAt: { type: Date, select: false },
+    loginFailures: { type: Number, default: 0, select: false },
+    loginLockedUntil: { type: Date, select: false },
+    // Legacy enrollment data is hidden and ignored after MFA removal.
+    mfaEnabled: { type: Boolean, select: false },
+    mfaSecret: { type: String, select: false },
+    mfaPendingSecret: { type: String, select: false },
+    mfaPendingExpires: { type: Date, select: false },
+    mfaLastStep: { type: Number, default: -1, select: false },
+    mfaRecoveryHashes: { type: [String], select: false },
+    resetPasswordToken: { type: String, select: false },
+    resetPasswordExpires: { type: Date, select: false }
   },
   { timestamps: true }
 );
 
 userSchema.pre("save", async function hashPassword(next) {
   if (!this.isModified("password")) return next();
+  this.passwordChangedAt = new Date();
+  this.currentSessionId = "";
   this.password = await bcrypt.hash(this.password, 12);
   next();
 });

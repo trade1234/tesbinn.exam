@@ -46,7 +46,7 @@ test("customer service changes are logged automatically with role and summary", 
   assert.equal(logs.length, 1);
   assert.equal(logs[0].action, "CREATE_EXAM");
   assert.equal(logs[0].role, "CUSTOMER_SERVICE");
-  assert.match(logs[0].details, /title: Coffee Final/);
+  assert.match(logs[0].details, /Exam: Coffee Final/);
   assert.doesNotMatch(logs[0].details, /secret1/);
 });
 

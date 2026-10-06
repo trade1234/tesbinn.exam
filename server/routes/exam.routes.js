@@ -20,7 +20,7 @@ router.put("/attempts/:attemptId/answers", protect, authorize("STUDENT"), valida
 })), saveAnswers);
 router.post("/submit", protect, authorize("STUDENT"), validate(z.object({ body: z.object({ attemptId: z.string().min(1) }) })), submitExam);
 router.post("/attempts/:attemptId/violation", protect, authorize("STUDENT"), recordViolation);
-router.post("/attempts/:attemptId/retake", protect, authorize("ADMIN"), grantRetake);
+router.post("/attempts/:attemptId/retake", protect, authorize("ADMIN", "CUSTOMER_SERVICE"), validate(z.object({ params: z.object({ attemptId: z.string().regex(/^[a-fA-F0-9]{24}$/, "Invalid exam attempt") }) })), grantRetake);
 router.put("/:id", protect, authorize("ADMIN", "CUSTOMER_SERVICE"), validate(examSchema), updateExam);
 router.patch("/:id/schedule", protect, authorize("ADMIN", "CUSTOMER_SERVICE"), validate(scheduleExamSchema), scheduleExam);
 router.patch("/:id/pause", protect, authorize("ADMIN"), pauseExam);

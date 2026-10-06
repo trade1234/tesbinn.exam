@@ -3,6 +3,21 @@ import { z } from "zod";
 import { User } from "../models/User.js";
 import { signToken } from "../utils/tokens.js";
 import { logActivity } from "../utils/logger.js";
+import jwt from "jsonwebtoken";
+import { LoginSession } from "../models/LoginSession.js";
+import { setAuthCookie } from "../utils/authCookies.js";
+
+async function createLoginSession(req, res, user) {
+  const sessionId = crypto.randomUUID();
+  user.currentSessionId = sessionId;
+  user.lastActive = new Date();
+  await user.save();
+  if (user.role === "STUDENT") await LoginSession.updateMany({ userId: user._id, revokedAt: null }, { revokedAt: new Date() });
+  const token = signToken(user);
+  const expiresAt = new Date(jwt.decode(token).exp * 1000);
+  await LoginSession.create({ userId: user._id, sessionId, userAgent: String(req.headers["user-agent"] || "").slice(0, 512), ipAddress: req.ip || "", expiresAt });
+  setAuthCookie(res, token, expiresAt);
+}
 
 export const registerSchema = z.object({
   body: z.object({
@@ -15,8 +30,9 @@ export const registerSchema = z.object({
 
 export const loginSchema = z.object({
   body: z.object({
-    identifier: z.string().min(1),
-    password: z.string().min(1)
+    identifier: z.string().trim().min(1).max(254),
+    password: z.string().min(1).max(256),
+    code: z.string().trim().max(64).optional()
   })
 });
 
@@ -34,7 +50,8 @@ export async function register(req, res, next) {
     });
     req.user = user;
     await logActivity(req, "REGISTER", "Registered a new account");
-    res.status(201).json({ token: signToken(user), user: sanitizeUser(user) });
+    await createLoginSession(req, res, user);
+    res.status(201).json({ user: sanitizeUser(user) });
   } catch (error) {
     next(error);
   }
@@ -48,63 +65,41 @@ export async function login(req, res, next) {
         { email: identifier.toLowerCase() },
         { enrollmentNumber: identifier }
       ]
-    }).select("+password");
+    }).select("+password +loginFailures +loginLockedUntil");
+    if (user?.loginLockedUntil > new Date()) return res.status(401).json({ message: "Invalid credentials or sign-in temporarily unavailable. Try again later." });
     if (!user || !(await user.comparePassword(req.body.password))) {
+      if (user) {
+        if (user.loginLockedUntil) await User.updateOne({ _id: user._id, loginLockedUntil: { $lte: new Date() } }, { loginFailures: 0, loginLockedUntil: null });
+        const failed = await User.findOneAndUpdate({ _id: user._id }, { $inc: { loginFailures: 1 } }, { new: true }).select("+loginFailures");
+        if (failed.loginFailures >= 10) await User.updateOne({ _id: user._id }, { loginLockedUntil: new Date(Date.now() + 15 * 60000) });
+      }
       return res.status(401).json({ message: "Invalid credentials" });
     }
     if (!user.isActive) return res.status(403).json({ message: "Account is inactive" });
 
-    const sessionId = crypto.randomUUID();
-    user.currentSessionId = sessionId;
-    user.lastActive = new Date();
-    await user.save();
+    user.loginFailures = 0;
+    user.loginLockedUntil = undefined;
+    await createLoginSession(req, res, user);
 
     req.user = user;
     await logActivity(req, "LOGIN", `Logged in successfully via ${user.role === "STUDENT" ? "student" : user.role === "ADMIN" ? "admin" : "customer service"} portal`);
 
-    res.json({ token: signToken(user), user: sanitizeUser(user) });
+    res.json({ user: sanitizeUser(user) });
   } catch (error) {
     next(error);
   }
 }
 
-export async function forgotPassword(req, res, next) {
-  try {
-    const user = await User.findOne({ email: req.body.email });
-    if (!user) return res.json({ message: "If the email exists, a reset token was generated" });
-
-    const rawToken = crypto.randomBytes(24).toString("hex");
-    user.resetPasswordToken = crypto.createHash("sha256").update(rawToken).digest("hex");
-    user.resetPasswordExpires = new Date(Date.now() + 1000 * 60 * 30);
-    await user.save();
-
-    res.json({ message: "Reset token generated", resetToken: rawToken });
-  } catch (error) {
-    next(error);
-  }
+export async function forgotPassword(req, res) {
+  res.status(503).json({ message: "Password recovery is unavailable. Contact an administrator to reset your password." });
 }
 
-export async function resetPassword(req, res, next) {
-  try {
-    const hashed = crypto.createHash("sha256").update(req.body.token).digest("hex");
-    const user = await User.findOne({
-      resetPasswordToken: hashed,
-      resetPasswordExpires: { $gt: new Date() }
-    });
-    if (!user) return res.status(400).json({ message: "Invalid or expired reset token" });
-
-    user.password = req.body.password;
-    user.resetPasswordToken = undefined;
-    user.resetPasswordExpires = undefined;
-    await user.save();
-    res.json({ message: "Password reset successful" });
-  } catch (error) {
-    next(error);
-  }
+export async function resetPassword(req, res) {
+  res.status(503).json({ message: "Password recovery is unavailable. Contact an administrator to reset your password." });
 }
 
 export function me(req, res) {
-  res.json({ user: req.user });
+  res.json({ user: sanitizeUser(req.user) });
 }
 
 function sanitizeUser(user) {
@@ -112,6 +107,12 @@ function sanitizeUser(user) {
   delete data.password;
   delete data.resetPasswordToken;
   delete data.resetPasswordExpires;
+  delete data.currentSessionId;
+  delete data.passwordChangedAt;
+  delete data.loginFailures;
+  delete data.loginLockedUntil;
+  delete data.generatedPassword;
+  for (const field of ["mfaEnabled", "mfaSetupRequired", "mfaSecret", "mfaPendingSecret", "mfaPendingExpires", "mfaLastStep", "mfaRecoveryHashes"]) delete data[field];
   return data;
 }
 

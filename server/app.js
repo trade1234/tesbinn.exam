@@ -2,7 +2,7 @@ import express from "express";
 import cors from "cors";
 import compression from "compression";
 import helmet from "helmet";
-import rateLimit from "express-rate-limit";
+import { sharedRateLimit } from "./middlewares/sharedRateLimit.js";
 import mongoSanitize from "express-mongo-sanitize";
 import morgan from "morgan";
 import { dirname, join } from "node:path";
@@ -35,11 +35,9 @@ const allowedOrigins = new Set([
   "http://localhost:5174"
 ]);
 const localDevOrigin = /^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|172\.16\.\d+\.\d+):(5173|5174|5175)$/;
-const renderFrontendOrigin = /^https:\/\/[a-z0-9-]+\.onrender\.com$/;
-const vercelFrontendOrigin = /^https:\/\/[a-z0-9-]+\.vercel\.app$/;
 
 function isAllowedOrigin(origin) {
-  return allowedOrigins.has(origin) || localDevOrigin.test(origin) || renderFrontendOrigin.test(origin) || vercelFrontendOrigin.test(origin);
+  return allowedOrigins.has(origin) || (process.env.NODE_ENV !== "production" && localDevOrigin.test(origin));
 }
 
 app.use(cors((req, callback) => {
@@ -58,7 +56,6 @@ app.use(cors((req, callback) => {
 app.use(express.json({ limit: "2mb" }));
 app.use(mongoSanitize());
 app.use(morgan("dev"));
-app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 1000, standardHeaders: true, legacyHeaders: false }));
 app.get("/uploads/applications/:filename", serveApplicationUpload);
 app.use("/uploads", express.static(join(__dirname, "uploads")));
 app.use("/uploads", express.static(join(__dirname, "..", "uploads")));
@@ -146,6 +143,7 @@ async function ensureDatabase(_req, _res, next) {
 }
 
 app.use(["/api", "/uploads/applications"], ensureDatabase);
+app.use("/api", sharedRateLimit("api", 1000));
 app.use("/api/applications", applicationRoutes);
 app.use("/api/application", applicationRoutes);
 app.use("/api/auth", authRoutes);

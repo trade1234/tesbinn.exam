@@ -29,6 +29,7 @@ const CertificateAccess = lazy(() => import("./pages/CertificateAccess.jsx"));
 const AccountManagement = lazy(() => import("./pages/AccountManagement.jsx"));
 const CustomerServiceDashboard = lazy(() => import("./pages/CustomerServiceDashboard.jsx"));
 const ActivityLogs = lazy(() => import("./pages/ActivityLogs.jsx"));
+const DeviceLogins = lazy(() => import("./pages/DeviceLogins.jsx"));
 
 export default function App() {
   return (
@@ -53,6 +54,7 @@ export default function App() {
           <Route path="/admin/certificate-access" element={<CertificateAccess />} />
           <Route path="/admin/accounts" element={<AccountManagement />} />
           <Route path="/admin/activity-logs" element={<ActivityLogs />} />
+          <Route path="/admin/device-logins" element={<DeviceLogins />} />
           <Route path="/admin/retakes" element={<RetakeUsers />} />
           <Route path="/admin/disqualified" element={<DisqualifiedStudents />} />
           <Route path="/admin/monitor" element={<LiveMonitor />} />
@@ -64,6 +66,7 @@ export default function App() {
           <Route path="/support/students" element={<Students />} />
           <Route path="/support/courses" element={<Courses />} />
           <Route path="/support/exams" element={<ExamManagement />} />
+          <Route path="/support/retakes" element={<RetakeUsers />} />
         </Route>
       </Route>
       <Route element={<ProtectedRoute role="STUDENT" />}>

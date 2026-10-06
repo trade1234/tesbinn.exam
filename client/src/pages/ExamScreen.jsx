@@ -104,16 +104,16 @@ export default function ExamScreen() {
     const flushBeforeUnload = () => {
       if (!bundle?.attempt?._id) return;
       const body = JSON.stringify({ answers: answerPayload() });
-      const token = localStorage.getItem("exam_token");
       localStorage.setItem(`exam_answers_${bundle.attempt._id}`, JSON.stringify({ startedAt: bundle.attempt.startedAt, answers: answerPayload() }));
       localStorage.setItem(`exam_leave_${bundle.attempt._id}`, String(Date.now()));
       fetch(`${api.defaults.baseURL}/exams/attempts/${bundle.attempt._id}/answers`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
+          "X-Exam-Request": "1"
         },
         body,
+        credentials: "include",
         keepalive: true
       }).catch(() => {});
     };

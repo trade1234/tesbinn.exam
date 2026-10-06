@@ -7,7 +7,9 @@ const normalizedConfiguredApiUrl = configuredApiUrl && !configuredApiUrl.endsWit
 export const apiBaseURL = import.meta.env.PROD && isLocalApiUrl ? "/api" : normalizedConfiguredApiUrl || "/api";
 
 export const api = axios.create({
-  baseURL: apiBaseURL
+  baseURL: apiBaseURL,
+  withCredentials: true,
+  headers: { "X-Exam-Request": "1" }
 });
 function apiOrigin() {
   if (!apiBaseURL || apiBaseURL === "/api") return window.location.origin;
@@ -27,16 +29,10 @@ export function assetUrl(path) {
   return `${apiOrigin()}${normalizedPath}`;
 }
 
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("exam_token");
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
-
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response && error.response.status === 401) {
+    if (error.response && error.response.status === 401 && !error.config?.url?.includes("/auth/login") && !error.config?.skipAuthRedirect) {
       const isSessionInvalidated = error.response.data?.message?.includes("Session invalidated") || false;
       localStorage.removeItem("exam_token");
       localStorage.removeItem("exam_user");

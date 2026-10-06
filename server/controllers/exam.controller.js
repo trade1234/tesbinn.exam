@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { Exam } from "../models/Exam.js";
+import { Course } from "../models/Course.js";
 import { Question } from "../models/Question.js";
 import { ExamAttempt } from "../models/ExamAttempt.js";
 import { Answer } from "../models/Answer.js";
@@ -27,8 +28,8 @@ function calculateEndDate(startDate, durationMinutes, extraTimeMinutes = 0) {
 
 export const examSchema = z.object({
   body: z.object({
-    courseId: z.string().min(1),
-    title: z.string().min(2),
+    courseId: z.string().regex(/^[a-fA-F0-9]{24}$/, "Select a valid course"),
+    title: z.string().trim().min(2, "Exam title must contain at least 2 characters"),
     description: z.string().optional(),
     durationMinutes: z.coerce.number().min(1),
     extraTimeMinutes: z.coerce.number().min(0).default(0),
@@ -90,6 +91,7 @@ export async function listExams(req, res, next) {
 
 export async function createExam(req, res, next) {
   try {
+    if (!await Course.exists({ _id: req.body.courseId })) return res.status(400).json({ message: "Selected course does not exist" });
     res.status(201).json(await Exam.create({ ...req.body, createdBy: req.user._id }));
   } catch (error) {
     next(error);
@@ -377,6 +379,7 @@ export async function scheduleExam(req, res, next) {
     }
     exam.set({ startDate: req.body.startDate, extraTimeMinutes, endDate });
     await exam.save();
+    req.activityDetails = `Updated schedule for "${exam.title}". Starts: ${new Date(exam.startDate).toISOString()}; Ends: ${endDate.toISOString()}; Extra time: ${extraTimeMinutes} minutes.`;
     res.json(exam);
   } catch (error) { next(error); }
 }

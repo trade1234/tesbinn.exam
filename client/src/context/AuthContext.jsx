@@ -1,48 +1,31 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { api } from "../services/api.js";
-
 const AuthContext = createContext(null);
-
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => {
-    const stored = localStorage.getItem("exam_user");
-    return stored ? JSON.parse(stored) : null;
-  });
-  const [loading, setLoading] = useState(false);
-
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
   useEffect(() => {
-    const token = localStorage.getItem("exam_token");
-    if (!token) return;
-    api.get("/auth/me").then((res) => {
-      setUser(res.data.user);
-      localStorage.setItem("exam_user", JSON.stringify(res.data.user));
-    }).catch(() => logout());
-  }, []);
-
-  async function login(payload) {
-    setLoading(true);
-    try {
-      const { data } = await api.post("/auth/login", payload);
-      localStorage.setItem("exam_token", data.token);
-      localStorage.setItem("exam_user", JSON.stringify(data.user));
-      setUser(data.user);
-      return data.user;
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  function logout() {
     localStorage.removeItem("exam_token");
     localStorage.removeItem("exam_user");
+    api.get("/auth/me", { skipAuthRedirect: true }).then(({ data }) => setUser(data.user)).catch(() => setUser(null)).finally(() => setLoading(false));
+  }, []);
+  useEffect(() => {
+    if (!user) return;
+    const timer = window.setInterval(() => { api.get("/auth/me").catch(() => {}); }, 30000);
+    return () => window.clearInterval(timer);
+  }, [user?._id]);
+  async function login(payload) {
+    setLoading(true);
+    try { const { data } = await api.post("/auth/login", payload); setUser(data.user); return data.user; }
+    finally { setLoading(false); }
+  }
+  async function logout() {
+    try { await api.post("/auth/logout", {}, { skipAuthRedirect: true }); }
+    catch (error) { if (error.response?.status !== 401) throw error; }
     setUser(null);
   }
-
-  const value = useMemo(() => ({ user, loading, login, logout, isAdmin: user?.role === "ADMIN", isCustomerService: user?.role === "CUSTOMER_SERVICE" }), [user, loading]);
+  async function refreshUser() { const { data } = await api.get("/auth/me"); setUser(data.user); return data.user; }
+  const value = useMemo(() => ({ user, loading, login, logout, refreshUser, isAdmin: user?.role === "ADMIN", isCustomerService: user?.role === "CUSTOMER_SERVICE" }), [user, loading]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
-
-export function useAuth() {
-  return useContext(AuthContext);
-}
-
+export function useAuth() { return useContext(AuthContext); }

@@ -4,7 +4,8 @@ export function validate(schema) {
     if (!result.success) {
       return res.status(400).json({
         message: "Validation failed",
-        details: result.error.flatten()
+        details: result.error.flatten(),
+        issues: result.error.issues.map(({ path, message }) => ({ path: path.join("."), message }))
       });
     }
     if (result.data.body !== undefined) req.body = result.data.body;

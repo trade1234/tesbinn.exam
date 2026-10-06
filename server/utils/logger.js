@@ -7,6 +7,7 @@ const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 const ROUTE_ACTIONS = {
   "POST /api/exams": "CREATE_EXAM",
   "PUT /api/exams/:id": "UPDATE_EXAM",
+  "PATCH /api/exams/:id/schedule": "SCHEDULE_EXAM",
   "PATCH /api/exams/:id/pause": "PAUSE_EXAM",
   "PATCH /api/exams/:id/resume": "RESUME_EXAM",
   "DELETE /api/exams/:id": "DELETE_EXAM",
@@ -63,14 +64,15 @@ export async function logActivity(reqOrUserId, action, details = "") {
 function describeRequest(req, routeKey) {
   const body = req.body && typeof req.body === "object" ? req.body : {};
   const parts = [];
-  if (req.params?.id) parts.push(`id ${req.params.id}`);
   for (const field of SUMMARY_FIELDS) {
     if (body[field] === undefined || body[field] === "") continue;
-    const value = String(body[field]);
-    parts.push(`${field}: ${value.length > 80 ? `${value.slice(0, 77)}...` : value}`);
+    const labels = { title: "Exam", courseName: "Course", courseCode: "Course code", name: "Name", questionText: "Question", studentName: "Student", startDate: "Starts", endDate: "Ends", extraTimeMinutes: "Extra time (minutes)", isActive: "Active", isPaused: "Paused" };
+    const value = field.endsWith("Date") ? new Date(body[field]).toISOString() : String(body[field]);
+    parts.push(`${labels[field]}: ${value.length > 160 ? `${value.slice(0, 157)}...` : value}`);
   }
   if (Array.isArray(body.questions)) parts.push(`${body.questions.length} questions`);
-  return `${routeKey}${parts.length ? ` (${parts.join(", ")})` : ""}`;
+  const action = (ROUTE_ACTIONS[routeKey] || "STAFF_ACTION").toLowerCase().replace(/_/g, " ");
+  return `${action.charAt(0).toUpperCase()}${action.slice(1)}${parts.length ? ` — ${parts.join("; ")}` : ""}`;
 }
 
 // Records every successful change made by an admin or customer service user,
@@ -81,6 +83,6 @@ export function auditStaffActions(req, res) {
     if (req.activityLogged || res.statusCode >= 400) return;
     const path = `${req.baseUrl}${req.route?.path || req.path}`.replace(/\/+$/, "") || "/";
     const routeKey = `${req.method} ${path}`;
-    logActivity(req, ROUTE_ACTIONS[routeKey] || "STAFF_ACTION", describeRequest(req, routeKey));
+    logActivity(req, ROUTE_ACTIONS[routeKey] || "STAFF_ACTION", req.activityDetails || describeRequest(req, routeKey));
   });
 }

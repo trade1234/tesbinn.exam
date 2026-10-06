@@ -26,8 +26,8 @@ test("customer service can create, list and edit students", () => {
   }
 });
 
-test("customer service cannot delete exams or questions, approve retakes or monitor", () => {
-  for (const [router, method, path] of [[exams, "delete", "/:id"], [exams, "post", "/attempts/:attemptId/retake"], [questions, "delete", "/:id"], [results, "get", "/live"], [results, "get", "/disqualified"]]) {
+test("customer service cannot delete exams or questions or monitor", () => {
+  for (const [router, method, path] of [[exams, "delete", "/:id"], [questions, "delete", "/:id"], [results, "get", "/live"]]) {
     assert.equal(allowed(router, method, path, "CUSTOMER_SERVICE"), false, path);
     assert.equal(allowed(router, method, path, "ADMIN"), true, path);
   }
@@ -39,4 +39,11 @@ test("customer service can create and edit exams and schedule all exams", () => 
     assert.equal(allowed(router, method, path, "CUSTOMER_SERVICE"), true, path);
   }
   assert.equal(allowed(exams, "patch", "/:id/schedule", "STUDENT"), false);
+});
+
+test("customer service can list disqualified students and grant retakes", () => {
+  for (const [router, method, path] of [[results, "get", "/disqualified"], [exams, "post", "/attempts/:attemptId/retake"]]) {
+    assert.equal(allowed(router, method, path, "CUSTOMER_SERVICE"), true);
+    assert.equal(allowed(router, method, path, "STUDENT"), false);
+  }
 });

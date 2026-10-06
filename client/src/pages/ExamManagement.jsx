@@ -69,7 +69,7 @@ function defaultExamForm() {
 }
 
 function apiErrorMessage(error) {
-  return error?.response?.data?.message || "Request failed. Please check the form and try again.";
+  return error?.response?.data?.issues?.map((issue) => issue.message).join(" ") || error?.response?.data?.message || "Request failed. Please check the form and try again.";
 }
 
 function questionTypeLabel(questionType) {
@@ -278,10 +278,23 @@ export default function ExamManagement() {
 
   async function saveExam(e) {
     e.preventDefault();
+    if (savingId) return;
     setFormError("");
+    if (!examForm.courseId || examForm.title.trim().length < 2) {
+      setFormError("Select a course and enter an exam title of at least 2 characters.");
+      return;
+    }
+    if ([["durationMinutes", 1], ["extraTimeMinutes", 0], ["totalMarks", 1], ["passPercentage", 0]].some(([field, min]) => String(examForm[field]).trim() === "" || !Number.isFinite(Number(examForm[field])) || Number(examForm[field]) < min) || Number(examForm.passPercentage) > 100) {
+      setFormError("Enter valid duration, extra time, marks, and a pass percentage between 0 and 100.");
+      return;
+    }
     const action = e.nativeEvent.submitter?.value || "save";
     const startDate = localDateTimeToDate(examForm.startDate);
     const endDate = calculatedExamEndDate(examForm);
+    if (!startDate || !Number.isFinite(startDate.getTime()) || !endDate || !Number.isFinite(endDate.getTime())) {
+      setFormError("Select a valid exam start date and time.");
+      return;
+    }
     if (startDate && endDate && !isSameLocalDate(startDate, endDate)) {
       setFormError("Exam end time must remain on the same date as the selected exam date.");
       return;
@@ -303,7 +316,8 @@ export default function ExamManagement() {
         return;
       }
 
-      const { data: createdExam } = await api.post("/exams", examForm);
+      setSavingId("create");
+      const { data: createdExam } = await api.post("/exams", toExamPayload({ ...examForm, title: examForm.title.trim() }));
       setExamForm(blankExam);
       if (action === "addQuestions") {
         localStorage.removeItem(questionDraftStorageKey);

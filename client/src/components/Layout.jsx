@@ -147,20 +147,22 @@ export default function Layout({ role }) {
     { to: "/admin/disqualified", label: "Disqualified", icon: ShieldAlert },
     { to: "/admin/monitor", label: "Live Monitor", icon: Radio },
     { to: "/admin/accounts", label: "Account Management", icon: UserCog },
-    { to: "/admin/activity-logs", label: "Activity Logs", icon: History }
+    { to: "/admin/activity-logs", label: "Activity Logs", icon: History },
+    { to: "/admin/device-logins", label: "Device Logins", icon: ShieldAlert },
   ];
   const studentLinks = [
     { to: "/student", label: "Dashboard", icon: Home },
     { to: "/student/courses", label: "Exams", icon: BookOpen },
     { to: "/student/results", label: "Results", icon: FileBarChart },
     { to: "/student/certificates", label: "Certificates", icon: Award },
-    { to: "/student/profile", label: "Profile", icon: Settings }
+    { to: "/student/profile", label: "Profile", icon: Settings },
   ];
   const supportLinks = [
     { to: "/support", label: "Dashboard", icon: Headset },
     { to: "/support/students", label: "Students", icon: Users },
     { to: "/support/courses", label: "Courses", icon: BookOpen },
-    { to: "/support/exams", label: "Exams & Schedule", icon: ClipboardList }
+    { to: "/support/exams", label: "Exams & Schedule", icon: ClipboardList },
+    { to: "/support/retakes", label: "Retake Users", icon: RotateCcw },
   ];
   const links = role === "ADMIN" ? adminLinks : role === "CUSTOMER_SERVICE" ? supportLinks : studentLinks;
   const roleTitle = role === "ADMIN" ? "Admin" : role === "CUSTOMER_SERVICE" ? "Support" : "Exams";
@@ -360,7 +362,7 @@ export default function Layout({ role }) {
                           <button className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800" type="button" onClick={() => setDarkMode((value) => !value)}>
                             {darkMode ? <Sun size={17} /> : <Moon size={17} />} {darkMode ? "Light Mode" : "Dark Mode"}
                           </button>
-                          <button className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-semibold text-red-600 transition hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-950/30" type="button" onClick={() => { setProfileOpen(false); logout(); }}>
+                          <button className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-semibold text-red-600 transition hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-950/30" type="button" onClick={() => { setProfileOpen(false); logout().catch(() => setToast({ title: "Sign-out failed", message: "Please try again. Your session is still active." })); }}>
                             <LogOut size={17} /> Logout
                           </button>
                         </div>

@@ -21,6 +21,8 @@ export default function RetakeUsers() {
     try {
       const { data } = await api.get("/results/disqualified");
       setRows(Array.isArray(data) ? data.filter(Boolean) : []);
+    } catch (error) {
+      setMessage(error.response?.data?.message || "Could not load disqualified students. Please refresh to try again.");
     } finally {
       setLoading(false);
     }
@@ -52,7 +54,7 @@ export default function RetakeUsers() {
     { key: "exam", label: "Exam", render: (row) => row.examId?.title || "Unknown" },
     { key: "violations", label: "Violations", render: (row) => <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-bold text-red-700">{row.violationCount || 3}/3</span> },
     { key: "date", label: "Disqualified At", render: (row) => formatDate(row.submittedAt) },
-    { key: "action", label: "Admin Permission", render: (row) => <button className="btn-primary" type="button" disabled={grantingId === row._id} onClick={() => setConfirmTarget(row)}><RotateCcw size={16} /> {grantingId === row._id ? "Granting..." : "Allow Retake"}</button> }
+    { key: "action", label: "Retake Permission", render: (row) => <button className="btn-primary" type="button" disabled={grantingId === row._id} onClick={() => setConfirmTarget(row)}><RotateCcw size={16} /> {grantingId === row._id ? "Granting..." : "Allow Retake"}</button> }
   ];
 
   return (
@@ -60,7 +62,7 @@ export default function RetakeUsers() {
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
         <div>
           <h2 className="flex items-center gap-2 text-2xl font-bold text-slate-950 dark:text-slate-100"><ShieldCheck className="text-[#0f88d2]" /> Retake Users</h2>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Only disqualified students appear here. An administrator must explicitly allow every retake.</p>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Only disqualified students appear here. An administrator or customer service representative must allow every retake.</p>
         </div>
         <button className="btn-secondary" type="button" onClick={loadDisqualified} disabled={loading}><RotateCcw size={16} /> Refresh</button>
       </div>
