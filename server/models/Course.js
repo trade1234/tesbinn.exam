@@ -7,7 +7,8 @@ const courseSchema = new mongoose.Schema(
     description: { type: String, default: "" },
     certificatesVisible: { type: Boolean, default: true },
     certificatesActive: { type: Boolean, default: true },
-    certificateDeactivationReason: { type: String, default: "", trim: true }
+    certificateDeactivationReason: { type: String, default: "", trim: true },
+    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" }
   },
   { timestamps: true }
 );

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { AlertTriangle, ArrowLeft, CalendarDays, CheckCircle2, Clock3, FileText, PlayCircle, Scale, ShieldCheck } from "lucide-react";
 import { api } from "../services/api.js";
+import { Skeleton } from "../components/Skeleton.jsx";
 
 const courseImages = [
   "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=1200&q=80",
@@ -33,8 +34,12 @@ export default function StudentExamDetails() {
   if (!exam) {
     return (
       <main className="min-h-screen bg-[#edf4fb] p-4 sm:p-8">
-        <div className="mx-auto max-w-6xl rounded-2xl bg-white p-8 text-center text-slate-500 shadow-[0_18px_45px_rgba(30,41,59,0.07)]">
-          Loading exam details...
+        <div className="mx-auto max-w-6xl space-y-5 rounded-2xl bg-white p-6 shadow-[0_18px_45px_rgba(30,41,59,0.07)] sm:p-8" role="status" aria-label="Loading exam details">
+          <Skeleton className="h-48 w-full" />
+          <Skeleton className="h-7 w-2/3" />
+          <Skeleton className="h-4 w-1/2" />
+          <div className="grid gap-3 sm:grid-cols-3">{[1, 2, 3].map((item) => <Skeleton key={item} className="h-20" />)}</div>
+          <Skeleton className="h-11 w-48" />
         </div>
       </main>
     );
@@ -82,7 +87,7 @@ export default function StudentExamDetails() {
 
         <section className="overflow-hidden rounded-2xl sm:rounded-3xl bg-white shadow-[0_24px_70px_rgba(30,41,59,0.14)]">
           <div className="relative h-56 overflow-hidden sm:h-80 lg:h-[360px]">
-            <img className="h-full w-full object-cover" src={image} alt={`${exam.courseId?.courseName || "Course"} cover`} />
+            <img className="h-full w-full object-cover" src={image} alt={`${exam.courseId?.courseName || "Course"} cover`} decoding="async" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-black/5" />
             <div className="absolute bottom-5 left-5 right-5 text-white sm:bottom-9 sm:left-9 sm:right-9">
               <p className="mb-3 inline-flex rounded-full bg-white/95 px-3 py-1 text-xs font-semibold text-[#0f88d2] shadow-sm">{exam.courseId?.courseCode || "COURSE"}</p>

@@ -52,8 +52,9 @@ const ethiopianBanks = [
 ];
 
 const allowedImageTypes = ["image/jpeg", "image/png", "image/webp"];
-const compressedUploadSize = 2 * 1024 * 1024;
-const maxImageDimension = 1600;
+// Target ~600KB per image: small enough to store and load fast, sharp enough to read IDs and receipts.
+const compressedUploadSize = 600 * 1024;
+const maxImageDimension = 1400;
 
 function validateUpload(files) {
   const file = files?.[0];
@@ -97,7 +98,7 @@ function canvasToBlob(canvas, quality) {
 async function compressImageFile(file) {
   const image = await readImage(file);
   let scale = Math.min(1, maxImageDimension / Math.max(image.naturalWidth, image.naturalHeight));
-  let quality = 0.86;
+  let quality = 0.82;
   let blob = null;
 
   for (let attempt = 0; attempt < 12; attempt += 1) {

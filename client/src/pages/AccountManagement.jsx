@@ -4,6 +4,7 @@ import DataTable from "../components/DataTable.jsx";
 import Modal from "../components/Modal.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { api } from "../services/api.js";
+import { TableSkeleton } from "../components/Skeleton.jsx";
 
 export const ROLE_LABELS = { ADMIN: "Admin", CUSTOMER_SERVICE: "Customer Service" };
 
@@ -144,7 +145,7 @@ export default function AccountManagement() {
         </select>
       </div>
 
-      {loading ? <div className="card p-8 text-center text-slate-500">Loading accounts...</div> : <DataTable columns={columns} rows={accounts} empty="No staff accounts found." />}
+      {loading ? <TableSkeleton columns={5} /> : <DataTable columns={columns} rows={accounts} empty="No staff accounts found." />}
 
       {form && (
         <Modal title="Create staff account" onClose={() => setForm(null)}>

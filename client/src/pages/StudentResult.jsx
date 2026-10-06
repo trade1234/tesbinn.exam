@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { Award, Download, ListChecks, LoaderCircle } from "lucide-react";
+import { Award, Download, ListChecks } from "lucide-react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import ResultImageCanvas, { resultImageBlob } from "../components/ResultImageCanvas.jsx";
 import { api } from "../services/api.js";
+import { Skeleton } from "../components/Skeleton.jsx";
 
 function formatResultNumber(value) {
   const num = Number(value);
@@ -72,7 +73,7 @@ export default function StudentResult() {
   }
 
   if (error) return <div className="rounded-xl bg-red-50 p-5 text-red-700">{error}</div>;
-  if (!result) return <div className="flex items-center gap-3 p-8 text-slate-500"><LoaderCircle className="animate-spin" /> Loading result...</div>;
+  if (!result) return <div className="mx-auto max-w-5xl space-y-6" role="status" aria-label="Loading result"><div className="card space-y-3 p-6"><Skeleton className="h-3 w-48" /><Skeleton className="h-8 w-72 max-w-full" /><Skeleton className="h-4 w-56" /></div><Skeleton className="h-96 w-full rounded-2xl" /></div>;
   return <div className="mx-auto max-w-5xl space-y-6">
     <div className="rounded-2xl bg-white p-5 shadow-soft dark:bg-[#111a2b] sm:flex sm:items-center sm:justify-between sm:p-7">
       <div><p className={`text-sm font-bold uppercase tracking-widest ${result.status === "PASS" ? "text-emerald-600" : "text-red-600"}`}>Exam submitted successfully</p><h1 className="mt-2 text-3xl font-bold text-slate-950 dark:text-white">Your result is ready</h1><p className="mt-2 text-slate-500 dark:text-slate-400">{result.studentName} · {formatResultNumber(result.score)}/{formatResultNumber(result.totalMarks)} ({formatPercentage(result.percentage)})</p></div>

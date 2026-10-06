@@ -1,35 +1,38 @@
+import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
-import Home from "./pages/Home.jsx";
 import Layout from "./components/Layout.jsx";
 import ProtectedRoute from "./routes/ProtectedRoute.jsx";
-import Login from "./pages/Login.jsx";
-import AdminDashboard from "./pages/AdminDashboard.jsx";
-import Courses from "./pages/Courses.jsx";
-import ExamManagement from "./pages/ExamManagement.jsx";
-import Students from "./pages/Students.jsx";
-import Applications from "./pages/Applications.jsx";
-import Results from "./pages/Results.jsx";
-import LiveMonitor from "./pages/LiveMonitor.jsx";
-import StudentDashboard from "./pages/StudentDashboard.jsx";
-import StudentExams from "./pages/StudentExams.jsx";
-import StudentExamDetails from "./pages/StudentExamDetails.jsx";
-import ExamScreen from "./pages/ExamScreen.jsx";
-import Profile from "./pages/Profile.jsx";
-import ApplicationRegistration from "./pages/ApplicationRegistration.jsx";
-import RetakeUsers from "./pages/RetakeUsers.jsx";
-import DisqualifiedStudents from "./pages/DisqualifiedStudents.jsx";
-import Certificates from "./pages/Certificates.jsx";
-import StudentResult from "./pages/StudentResult.jsx";
-import DataExports from "./pages/DataExports.jsx";
-import VerifyCertificate from "./pages/VerifyCertificate.jsx";
-import DataAnalytics from "./pages/DataAnalytics.jsx";
-import CertificateAccess from "./pages/CertificateAccess.jsx";
-import AccountManagement from "./pages/AccountManagement.jsx";
-import CustomerServiceDashboard from "./pages/CustomerServiceDashboard.jsx";
-import ActivityLogs from "./pages/ActivityLogs.jsx";
+import { PageSkeleton } from "./components/Skeleton.jsx";
+const Home = lazy(() => import("./pages/Home.jsx"));
+const Login = lazy(() => import("./pages/Login.jsx"));
+const AdminDashboard = lazy(() => import("./pages/AdminDashboard.jsx"));
+const Courses = lazy(() => import("./pages/Courses.jsx"));
+const ExamManagement = lazy(() => import("./pages/ExamManagement.jsx"));
+const Students = lazy(() => import("./pages/Students.jsx"));
+const Applications = lazy(() => import("./pages/Applications.jsx"));
+const Results = lazy(() => import("./pages/Results.jsx"));
+const LiveMonitor = lazy(() => import("./pages/LiveMonitor.jsx"));
+const StudentDashboard = lazy(() => import("./pages/StudentDashboard.jsx"));
+const StudentExams = lazy(() => import("./pages/StudentExams.jsx"));
+const StudentExamDetails = lazy(() => import("./pages/StudentExamDetails.jsx"));
+const ExamScreen = lazy(() => import("./pages/ExamScreen.jsx"));
+const Profile = lazy(() => import("./pages/Profile.jsx"));
+const ApplicationRegistration = lazy(() => import("./pages/ApplicationRegistration.jsx"));
+const RetakeUsers = lazy(() => import("./pages/RetakeUsers.jsx"));
+const DisqualifiedStudents = lazy(() => import("./pages/DisqualifiedStudents.jsx"));
+const Certificates = lazy(() => import("./pages/Certificates.jsx"));
+const StudentResult = lazy(() => import("./pages/StudentResult.jsx"));
+const DataExports = lazy(() => import("./pages/DataExports.jsx"));
+const VerifyCertificate = lazy(() => import("./pages/VerifyCertificate.jsx"));
+const DataAnalytics = lazy(() => import("./pages/DataAnalytics.jsx"));
+const CertificateAccess = lazy(() => import("./pages/CertificateAccess.jsx"));
+const AccountManagement = lazy(() => import("./pages/AccountManagement.jsx"));
+const CustomerServiceDashboard = lazy(() => import("./pages/CustomerServiceDashboard.jsx"));
+const ActivityLogs = lazy(() => import("./pages/ActivityLogs.jsx"));
 
 export default function App() {
   return (
+    <Suspense fallback={<div className="p-4 sm:p-8"><PageSkeleton /></div>}>
     <Routes>
       <Route path="/" element={<Home />} />
       <Route path="/apply" element={<ApplicationRegistration />} />
@@ -59,6 +62,7 @@ export default function App() {
         <Route element={<Layout role="CUSTOMER_SERVICE" />}>
           <Route path="/support" element={<CustomerServiceDashboard />} />
           <Route path="/support/students" element={<Students />} />
+          <Route path="/support/courses" element={<Courses />} />
           <Route path="/support/exams" element={<ExamManagement />} />
         </Route>
       </Route>
@@ -77,5 +81,6 @@ export default function App() {
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </Suspense>
   );
 }

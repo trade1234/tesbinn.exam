@@ -3,6 +3,7 @@ import { AlertTriangle, RotateCcw, ShieldCheck } from "lucide-react";
 import DataTable from "../components/DataTable.jsx";
 import Modal from "../components/Modal.jsx";
 import { api } from "../services/api.js";
+import { TableSkeleton } from "../components/Skeleton.jsx";
 
 function formatDate(value) {
   return value ? new Date(value).toLocaleString() : "Not recorded";
@@ -70,7 +71,7 @@ export default function RetakeUsers() {
       </div>
 
       {message && <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-800">{message}</div>}
-      {loading ? <div className="card p-8 text-center text-slate-500">Loading disqualified students...</div> : <DataTable columns={columns} rows={rows} empty="No disqualified students are waiting for retake permission." />}
+      {loading ? <TableSkeleton columns={5} /> : <DataTable columns={columns} rows={rows} empty="No disqualified students are waiting for retake permission." />}
 
       {confirmTarget && (
         <Modal title="Confirm Retake Permission" widthClass="max-w-lg" onClose={() => !grantingId && setConfirmTarget(null)}>

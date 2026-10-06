@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { RefreshCw, ShieldAlert } from "lucide-react";
 import DataTable from "../components/DataTable.jsx";
 import { api } from "../services/api.js";
+import { TableSkeleton } from "../components/Skeleton.jsx";
 
 function formatDate(value) {
   return value ? new Date(value).toLocaleString() : "Not recorded";
@@ -48,7 +49,7 @@ export default function DisqualifiedStudents() {
       </div>
       <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">This page is audit-only. Records cannot be edited, deleted, or approved for retake here.</div>
       {error && <div className="rounded-xl bg-red-50 p-4 text-sm font-semibold text-red-700">{error}</div>}
-      {loading ? <div className="card p-8 text-center text-slate-500">Loading disqualification history...</div> : <DataTable columns={columns} rows={rows} empty="No students have been disqualified." />}
+      {loading ? <TableSkeleton columns={5} /> : <DataTable columns={columns} rows={rows} empty="No students have been disqualified." />}
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import compression from "compression";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import mongoSanitize from "express-mongo-sanitize";
@@ -25,6 +26,7 @@ app.set("trust proxy", 1);
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
+app.use(compression());
 
 const allowedOrigins = new Set([
   ...env.allowedOrigins,

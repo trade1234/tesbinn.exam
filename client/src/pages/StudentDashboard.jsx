@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { CalendarClock, CheckCircle2, GraduationCap, Trophy } from "lucide-react";
 import { api } from "../services/api.js";
+import { CardGridSkeleton, StatsSkeleton } from "../components/Skeleton.jsx";
 import logoUrl from "../logo/download.png";
 
 const covers = [
@@ -59,7 +60,7 @@ function CourseCard({ course, index }) {
 
 export default function StudentDashboard() {
   const [data, setData] = useState(null);
-  useEffect(() => { api.get("/users/dashboard/student").then((res) => setData(res.data)); }, []);
+  useEffect(() => { api.get("/users/dashboard/student").then((res) => setData(res.data)).catch(() => setData({})); }, []);
   const courses = data?.courses || [];
   const upcoming = data?.upcomingExams || [];
   const recent = data?.recentResults || [];
@@ -73,7 +74,7 @@ export default function StudentDashboard() {
           </div>
           <div>
             <h1 className="break-words text-2xl font-semibold tracking-tight sm:text-3xl text-slate-950 dark:text-slate-100">Exams</h1>
-            <p className="mt-1 line-clamp-2 break-words text-sm leading-5 text-slate-500 sm:mt-2 sm:text-base dark:text-slate-400">{data?.profile?.name || "Student"} Ã‚Â· {data?.profile?.trainingTaken || "Not assigned"}</p>
+            <p className="mt-1 line-clamp-2 break-words text-sm leading-5 text-slate-500 sm:mt-2 sm:text-base dark:text-slate-400">{data?.profile?.name || "Student"} · {data?.profile?.trainingTaken || "Not assigned"}</p>
           </div>
         </div>
         <select className="mt-3 w-full rounded-lg border border-slate-100 bg-slate-50 px-4 py-3 text-sm outline-none dark:border-slate-800 dark:bg-[#0f172a] dark:text-slate-100 sm:mt-0 sm:w-44 sm:border-0 sm:bg-white sm:px-5 sm:py-4 sm:text-base sm:shadow-[0_18px_45px_rgba(30,41,59,0.07)] sm:dark:bg-[#111a2b]">
@@ -82,6 +83,7 @@ export default function StudentDashboard() {
         </select>
       </div>
 
+      {!data ? <><StatsSkeleton count={3} /><CardGridSkeleton count={3} /></> : <>
       <div className="grid min-w-0 gap-4 sm:grid-cols-3">
         <StudentMetric label="Active Courses" value={courses.length} icon={GraduationCap} color="bg-[#edf6ff] text-[#0f88d2]" />
         <StudentMetric label="Upcoming Exams" value={upcoming.length} icon={CalendarClock} color="bg-[#fff7ed] text-[#f97316]" />
@@ -91,6 +93,7 @@ export default function StudentDashboard() {
       <div className="grid min-w-0 gap-5 md:grid-cols-2 xl:grid-cols-3 xl:gap-9">
         {courses.slice(0, 6).map((course, index) => <CourseCard key={course._id} course={course} index={index} />)}
       </div>
+      </>}
 
       <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(280px,0.85fr)_minmax(0,1.15fr)] xl:gap-8">
         <section className="min-w-0 rounded-xl bg-white p-4 sm:p-7 shadow-[0_18px_45px_rgba(30,41,59,0.07)] dark:bg-[#111a2b] dark:shadow-[0_18px_45px_rgba(0,0,0,0.22)]">

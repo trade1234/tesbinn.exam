@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight, History, RefreshCw, Search, X } from "lucide-react";
 import DataTable from "../components/DataTable.jsx";
 import { api } from "../services/api.js";
+import { TableSkeleton } from "../components/Skeleton.jsx";
 
 const ROLE_OPTIONS = [
   ["", "All users"],
@@ -115,7 +116,7 @@ export default function ActivityLogs() {
 
       {error && <div className="rounded-xl bg-red-50 p-4 text-sm font-semibold text-red-700">{error}</div>}
 
-      {loading && !data.items.length ? <div className="card p-8 text-center text-slate-500">Loading activity...</div> : <DataTable columns={columns} rows={data.items} empty="No activity matches these filters." />}
+      {loading && !data.items.length ? <TableSkeleton columns={5} /> : <DataTable columns={columns} rows={data.items} empty="No activity matches these filters." />}
 
       <div className="flex items-center justify-between text-sm text-slate-500">
         <p>{data.total} entries · page {page} of {data.pages}</p>

@@ -3,6 +3,8 @@ import { Download, Eye, FileCheck2, GraduationCap, Printer, Search, UserRound, X
 import DataTable from "../components/DataTable.jsx";
 import Modal from "../components/Modal.jsx";
 import { api, assetUrl, downloadFile } from "../services/api.js";
+import { TableSkeleton } from "../components/Skeleton.jsx";
+import { useDebouncedValue } from "../hooks/useDebouncedValue.js";
 
 function fullName(person = {}) {
   return [person.firstName, person.lastName, person.grandfatherName].filter(Boolean).join(" ") || "Not provided";
@@ -196,7 +198,7 @@ function PersonalInformationSection({ application }) {
           <p className="mb-2 text-center text-[10px] font-black uppercase tracking-wide text-slate-700">Personal Photo</p>
           <div className="mx-auto flex h-48 w-36 items-center justify-center overflow-hidden border border-slate-900 bg-white">
             {photoUrl ? (
-              <img className="h-full w-full object-cover" src={photoUrl} alt="Personal" />
+              <img className="h-full w-full object-cover" src={photoUrl} alt="Personal" loading="lazy" decoding="async" />
             ) : (
               <span className="px-3 text-center text-xs font-semibold text-slate-500">No personal photo</span>
             )}
@@ -216,7 +218,7 @@ function DocumentImageSection({ title, image, alt }) {
       <h3 className="mb-3 text-sm font-black uppercase tracking-wide text-slate-950">{title}</h3>
       <div className="border border-slate-900 bg-white p-3">
         {imageUrl ? (
-          <img className="mx-auto max-h-72 w-full object-contain" src={imageUrl} alt={alt} />
+          <img className="mx-auto max-h-72 w-full object-contain" src={imageUrl} alt={alt} loading="lazy" decoding="async" />
         ) : (
           <div className="flex h-40 items-center justify-center text-sm font-semibold text-slate-500">No image uploaded</div>
         )}
@@ -228,6 +230,7 @@ function DocumentImageSection({ title, image, alt }) {
 export default function Applications() {
   const [rows, setRows] = useState([]);
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search.trim());
   const [filterMonth, setFilterMonth] = useState("");
   const [filterProgram, setFilterProgram] = useState("");
   const [loading, setLoading] = useState(false);
@@ -243,7 +246,7 @@ export default function Applications() {
       setLoading(true);
       setError("");
       try {
-        const response = await api.get(`/applications?search=${encodeURIComponent(search)}`);
+        const response = await api.get(`/applications?search=${encodeURIComponent(debouncedSearch)}`);
         if (!cancelled) setRows(response.data);
       } catch (err) {
         if (!cancelled) setError(err.response?.data?.message || "Failed to load applications");
@@ -255,7 +258,7 @@ export default function Applications() {
     return () => {
       cancelled = true;
     };
-  }, [search]);
+  }, [debouncedSearch]);
   async function confirmReject() {
     if (!rejectTarget?._id) return;
     setRejecting(true);
@@ -396,9 +399,7 @@ export default function Applications() {
       </div>
 
       {error && <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400">{error}</div>}
-      {loading && <div className="text-sm font-semibold text-slate-500 dark:text-slate-400">Loading applications...</div>}
-
-      <DataTable columns={columns} rows={filteredRows} empty="No assessment applications found" />
+      {loading && !rows.length ? <TableSkeleton columns={6} /> : <DataTable columns={columns} rows={filteredRows} empty="No assessment applications found" />}
 
       {rejectTarget && (
         <Modal title="Reject Application" onClose={() => !rejecting && setRejectTarget(null)}>

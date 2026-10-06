@@ -3,6 +3,7 @@ import { Activity, CheckCircle2, ClipboardList, RefreshCw, UserCheck, Users, XCi
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import DataTable from "../components/DataTable.jsx";
 import { api } from "../services/api.js";
+import { PageSkeleton } from "../components/Skeleton.jsx";
 
 const periods = [
   { key: "all", label: "All time" },
@@ -228,7 +229,7 @@ export default function DataAnalytics() {
   const filteredData = useMemo(() => enforcePeriod(data, period, anchor), [data, period, anchor]);
   const selectedPeriodLabel = periodLabel(period, anchor);
 
-  if (loading) return <div className="card p-8 text-sm text-slate-500">Loading data analytics...</div>;
+  if (loading) return <PageSkeleton />;
   if (error) return <div className="card p-8"><p className="text-sm font-semibold text-red-600">{error}</p><button className="btn-primary mt-5" onClick={() => load(period, anchor)} type="button"><RefreshCw size={16} /> Retry</button></div>;
 
   const totals = filteredData?.totals || {};

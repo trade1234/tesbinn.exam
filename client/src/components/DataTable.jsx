@@ -1,5 +1,8 @@
-export default function DataTable({ columns, rows, empty = "No records found" }) {
+import { TableSkeleton } from "./Skeleton.jsx";
+
+export default function DataTable({ columns, rows, empty = "No records found", loading = false }) {
   const safeRows = Array.isArray(rows) ? rows.filter(Boolean) : [];
+  if (loading && !safeRows.length) return <TableSkeleton columns={Math.min(columns.length, 6)} />;
   return (
     <div className="card min-w-0 overflow-hidden">
       <div className="md:hidden">

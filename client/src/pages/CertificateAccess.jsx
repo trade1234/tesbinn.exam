@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ExternalLink, Eye, EyeOff, QrCode, RefreshCw, Search, ShieldCheck, ShieldOff } from "lucide-react";
 import DataTable from "../components/DataTable.jsx";
 import { api } from "../services/api.js";
+import { TableSkeleton } from "../components/Skeleton.jsx";
 
 function Toggle({ on, onChange, disabled, onLabel, offLabel, OnIcon, OffIcon }) {
   return (
@@ -169,7 +170,7 @@ export default function CertificateAccess() {
             <option value="INACTIVE">QR deactivated</option>
           </select>
         </div>
-        {loading ? <div className="card p-8 text-center text-slate-500">Loading certificates...</div> : <DataTable columns={columns} rows={rows} empty="No certificates match these filters." />}
+        {loading ? <TableSkeleton columns={6} /> : <DataTable columns={columns} rows={rows} empty="No certificates match these filters." />}
       </section>
     </div>
   );

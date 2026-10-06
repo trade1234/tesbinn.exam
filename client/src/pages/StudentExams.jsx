@@ -2,14 +2,15 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { CalendarDays, Clock3, ExternalLink, ShieldCheck } from "lucide-react";
 import { api } from "../services/api.js";
+import { CardGridSkeleton } from "../components/Skeleton.jsx";
 
 const courseImages = [
-  "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=900&q=80",
-  "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=900&q=80",
-  "https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=900&q=80",
-  "https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=900&q=80",
-  "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=900&q=80",
-  "https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=900&q=80"
+  "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=640&q=70",
+  "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=640&q=70",
+  "https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=640&q=70",
+  "https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=640&q=70",
+  "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=640&q=70",
+  "https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=640&q=70"
 ];
 
 const progressColors = ["bg-[#5b8def]", "bg-[#ee845e]", "bg-[#56dd70]", "bg-[#1e9bf0]"];
@@ -43,7 +44,7 @@ function ExamCard({ exam, index, now, onOpen }) {
     <div>
       <article className="overflow-hidden rounded-xl bg-white shadow-[0_18px_45px_rgba(30,41,59,0.08)] transition hover:-translate-y-1 hover:shadow-[0_24px_60px_rgba(30,41,59,0.12)] dark:bg-[#111a2b] dark:shadow-[0_18px_45px_rgba(0,0,0,0.24)]">
         <div className="relative h-40 overflow-hidden">
-          <img className="h-full w-full object-cover" src={image} alt={`${exam.courseId?.courseName || "Course"} cover`} loading="lazy" />
+          <img className="h-full w-full object-cover" src={image} alt={`${exam.courseId?.courseName || "Course"} cover`} loading="lazy" decoding="async" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-black/5 to-transparent" />
           <div className="absolute left-5 top-5 rounded-full bg-white/95 px-3 py-1 text-xs font-semibold text-[#0f88d2] shadow-sm dark:bg-[#111a2b]/95 dark:text-[#7dd3fc]">
             {exam.courseId?.courseCode || "COURSE"}
@@ -99,8 +100,9 @@ export default function StudentExams() {
   const [exams, setExams] = useState([]);
   const [now, setNow] = useState(new Date());
   const [filter, setFilter] = useState("all");
+  const [loaded, setLoaded] = useState(false);
 
-  useEffect(() => { api.get("/exams").then((res) => setExams(Array.isArray(res.data) ? res.data.filter(Boolean) : [])); }, []);
+  useEffect(() => { api.get("/exams").then((res) => setExams(Array.isArray(res.data) ? res.data.filter(Boolean) : [])).finally(() => setLoaded(true)); }, []);
   useEffect(() => {
     const interval = setInterval(() => {
       setNow(new Date());
@@ -140,11 +142,13 @@ export default function StudentExams() {
         </select>
       </div>
 
+      {!loaded && <CardGridSkeleton />}
+
       <div className="grid min-w-0 gap-5 md:grid-cols-2 xl:grid-cols-3 xl:gap-9">
         {visibleExams.filter(Boolean).map((exam, index) => <ExamCard key={exam._id} exam={exam} index={index} now={now} onOpen={openExam} />)}
       </div>
 
-      {!visibleExams.length && (
+      {loaded && !visibleExams.length && (
         <div className="rounded-xl bg-white p-8 text-center text-slate-500 shadow-[0_18px_45px_rgba(30,41,59,0.07)] dark:bg-[#111a2b] dark:text-slate-400">
           {filter === "active" ? "No active exams are live right now." : filter === "upcoming" ? "No upcoming exams are scheduled." : filter === "completed" ? "No completed exams yet." : "No exams are available yet."}
         </div>

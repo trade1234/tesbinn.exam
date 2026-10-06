@@ -6,8 +6,8 @@ import { validate } from "../middlewares/validate.js";
 const router = Router();
 
 router.get("/", protect, listCourses);
-router.post("/", protect, authorize("ADMIN"), validate(courseSchema), createCourse);
-router.put("/:id", protect, authorize("ADMIN"), validate(courseSchema), updateCourse);
+router.post("/", protect, authorize("ADMIN", "CUSTOMER_SERVICE"), validate(courseSchema), createCourse);
+router.put("/:id", protect, authorize("ADMIN", "CUSTOMER_SERVICE"), validate(courseSchema), updateCourse);
 router.delete("/:id", protect, authorize("ADMIN"), deleteCourse);
 
 export default router;

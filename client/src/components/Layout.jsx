@@ -1,6 +1,7 @@
 import { AlertCircle, Award, Headset, History, QrCode, UserCog, BarChart3, Bell, BookOpen, ChevronDown, ClipboardList, Clock3, FileBarChart, FileCheck2, FileSpreadsheet, Home, LogOut, Moon, Radio, RotateCcw, Search, Settings, ShieldAlert, Sun, UserRound, Users } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { PageSkeleton } from "./Skeleton.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { api, downloadFile } from "../services/api.js";
 import logoUrl from "../logo/download.png";
@@ -158,13 +159,15 @@ export default function Layout({ role }) {
   const supportLinks = [
     { to: "/support", label: "Dashboard", icon: Headset },
     { to: "/support/students", label: "Students", icon: Users },
+    { to: "/support/courses", label: "Courses", icon: BookOpen },
     { to: "/support/exams", label: "Exams & Schedule", icon: ClipboardList }
   ];
   const links = role === "ADMIN" ? adminLinks : role === "CUSTOMER_SERVICE" ? supportLinks : studentLinks;
   const roleTitle = role === "ADMIN" ? "Admin" : role === "CUSTOMER_SERVICE" ? "Support" : "Exams";
   const groups = role === "CUSTOMER_SERVICE"
     ? [
-      { label: "Students", to: "/support/students" }
+      { label: "Students", to: "/support/students" },
+      { label: "Courses", to: "/support/courses" }
     ]
     : role === "ADMIN"
     ? [
@@ -369,7 +372,7 @@ export default function Layout({ role }) {
 
               <main className="min-w-0 flex-1 overflow-y-auto bg-[#fafafa] transition-colors dark:bg-[#0f172a]">
                 <section className="min-w-0 px-3 pb-24 pt-4 min-[420px]:px-4 min-[420px]:pt-5 sm:px-6 lg:px-8 xl:px-16 lg:py-12 xl:py-16">
-                <Outlet />
+                <Suspense fallback={<PageSkeleton />}><Outlet /></Suspense>
               </section>
 
               <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-2 py-2 shadow-[0_-12px_30px_rgba(15,23,42,0.14)] backdrop-blur dark:border-slate-800 dark:bg-[#111a2b]/95 lg:hidden">

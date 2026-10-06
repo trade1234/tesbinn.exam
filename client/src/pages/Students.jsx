@@ -4,12 +4,15 @@ import DataTable from "../components/DataTable.jsx";
 import Modal from "../components/Modal.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { api, downloadFile } from "../services/api.js";
+import { useDebouncedValue } from "../hooks/useDebouncedValue.js";
 
 export default function Students() {
   const { isAdmin } = useAuth();
   const [rows, setRows] = useState([]);
   const [courses, setCourses] = useState([]);
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search.trim());
+  const [listLoading, setListLoading] = useState(true);
   const [courseFilter, setCourseFilter] = useState("");
   const [modal, setModal] = useState(false);
   const [editingStudent, setEditingStudent] = useState(null);
@@ -29,9 +32,10 @@ export default function Students() {
 
   function load() {
     const params = new URLSearchParams();
-    if (search) params.set("search", search);
+    if (debouncedSearch) params.set("search", debouncedSearch);
     if (courseFilter) params.set("courseId", courseFilter);
-    api.get(`/users/students?${params.toString()}`).then((res) => setRows(res.data));
+    setListLoading(true);
+    api.get(`/users/students?${params.toString()}`).then((res) => setRows(res.data)).finally(() => setListLoading(false));
   }
 
   function exportQuery() {
@@ -46,7 +50,7 @@ export default function Students() {
     api.get("/courses").then((res) => setCourses(Array.isArray(res.data) ? res.data : []));
   }
 
-  useEffect(load, [search, courseFilter]);
+  useEffect(load, [debouncedSearch, courseFilter]);
   useEffect(loadCourses, []);
 
   async function toggle(row) {
@@ -174,7 +178,7 @@ export default function Students() {
           {courses.map((course) => <option key={course._id} value={course._id}>{course.courseCode ? `${course.courseCode} - ${course.courseName}` : course.courseName}</option>)}
         </select>
       </div>
-      <DataTable columns={[
+      <DataTable loading={listLoading} columns={[
         { key: "name", label: "Full Name" },
         { key: "enrollmentNumber", label: "Student ID", render: (row) => (
           <span className="font-mono text-xs font-semibold tracking-wide text-blue-700 dark:text-sky-400">

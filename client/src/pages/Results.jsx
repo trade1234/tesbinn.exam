@@ -4,6 +4,7 @@ import DataTable from "../components/DataTable.jsx";
 import Modal from "../components/Modal.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { api, downloadFile } from "../services/api.js";
+import { useDebouncedValue } from "../hooks/useDebouncedValue.js";
 
 function formatDateTime(value) {
   return value ? new Date(value).toLocaleString() : "Not set";
@@ -43,14 +44,17 @@ export default function Results() {
   const [reviewError, setReviewError] = useState("");
   const [retakingId, setRetakingId] = useState("");
   const [retakeTarget, setRetakeTarget] = useState(null);
-  const query = useMemo(() => buildResultQuery(filters), [filters]);
+  const debouncedFilters = useDebouncedValue(filters);
+  const query = useMemo(() => buildResultQuery(debouncedFilters), [debouncedFilters]);
+  const [rowsLoading, setRowsLoading] = useState(true);
 
   useEffect(() => {
     api.get("/courses").then((res) => setCourses(Array.isArray(res.data) ? res.data.filter(Boolean) : []));
   }, []);
 
   useEffect(() => {
-    api.get(`/results${query}`).then((res) => setCompletedRows(Array.isArray(res.data) ? res.data.filter(Boolean) : []));
+    setRowsLoading(true);
+    api.get(`/results${query}`).then((res) => setCompletedRows(Array.isArray(res.data) ? res.data.filter(Boolean) : [])).finally(() => setRowsLoading(false));
     if (isAdmin) {
       api.get(`/results/active${query}`).then((res) => setActiveRows(Array.isArray(res.data) ? res.data.filter(Boolean) : []));
     }
@@ -170,7 +174,7 @@ export default function Results() {
       )}
 
       {activeTab === "completed" ? (
-        <DataTable columns={[
+        <DataTable loading={rowsLoading} columns={[
           ...(isAdmin ? [{ key: "student", label: "Student", render: (row) => (
             <div>
               <p className="font-semibold text-slate-950 dark:text-slate-100">{row.studentId?.name}</p>
@@ -196,7 +200,7 @@ export default function Results() {
           ) }] : [])
         ]} rows={completedRows} />
       ) : (
-        <DataTable columns={[
+        <DataTable loading={rowsLoading} columns={[
           { key: "student", label: "Student", render: (row) => (
             <div>
               <p className="font-semibold text-slate-950 dark:text-slate-100">{row.studentId?.name}</p>

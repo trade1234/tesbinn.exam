@@ -6,3 +6,6 @@ export function canManageExam(user, exam) {
   const ownerId = exam.createdBy._id || exam.createdBy;
   return String(ownerId) === String(user._id);
 }
+
+// Same rule for courses: admins manage all, customer service only the courses they created.
+export const canManageCourse = canManageExam;
