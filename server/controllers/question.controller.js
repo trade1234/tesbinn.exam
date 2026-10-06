@@ -11,7 +11,7 @@ async function ensureCanManageExams(req, res, examIds) {
     return false;
   }
   if (!exams.every((exam) => canManageExam(req.user, exam))) {
-    res.status(403).json({ message: "You can only manage questions for exams you created" });
+    res.status(403).json({ message: "You can only add questions to exams you created" });
     return false;
   }
   return true;
@@ -101,7 +101,6 @@ export async function updateQuestion(req, res, next) {
   try {
     const question = await Question.findById(req.params.id);
     if (!question) return res.status(404).json({ message: "Question not found" });
-    if (!(await ensureCanManageExams(req, res, [question.examId, req.body.examId]))) return;
     question.set(req.body);
     await question.save();
     res.json(question);
@@ -114,7 +113,6 @@ export async function deleteQuestion(req, res, next) {
   try {
     const question = await Question.findById(req.params.id);
     if (!question) return res.status(404).json({ message: "Question not found" });
-    if (!(await ensureCanManageExams(req, res, [question.examId]))) return;
     await question.deleteOne();
     res.status(204).end();
   } catch (error) {

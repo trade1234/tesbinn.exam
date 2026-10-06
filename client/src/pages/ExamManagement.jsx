@@ -215,7 +215,7 @@ export default function ExamManagement() {
   const [editingExamId, setEditingExamId] = useState("");
   const [questionForm, setQuestionForm] = useState(blankQuestion);
   const [extraTimeForm, setExtraTimeForm] = useState(blankExtraTime);
-  // Customer service may only edit or delete exams they created; admins manage all exams.
+  // Customer service can reschedule any exam and add questions only to exams they created; admins manage everything.
   const canManageExam = (exam) => isAdmin || (!!user?._id && String(exam?.createdBy?._id || exam?.createdBy || "") === String(user._id));
   const manageableExams = exams.filter(canManageExam);
   const canManageExamId = (examId) => manageableExams.some((exam) => exam._id === examId);
@@ -529,6 +529,7 @@ export default function ExamManagement() {
   const examDateValue = examForm.startDate ? examForm.startDate.slice(0, 10) : "";
   const examStartTimeValue = examForm.startDate ? examForm.startDate.slice(11, 16) : "";
   const calculatedEndDate = calculatedExamEndDate(examForm);
+  const scheduleOnly = Boolean(editingExamId) && !isAdmin;
 
   async function openQuestionDetails(exam, fallbackQuestions = []) {
     const latestQuestions = await loadQuestions(exam._id);
@@ -656,7 +657,7 @@ export default function ExamManagement() {
         { key: "startDate", label: "Starts", render: (row) => formatDateTime(row.startDate) },
         { key: "endDate", label: "Ends", render: (row) => formatDateTime(row.endDate) },
         { key: "actions", label: "Actions", render: (row) => (
-          <div className="flex items-center gap-2">{canManageExam(row) ? (<><ActionIconButton label="Edit schedule" icon={CalendarClock} onClick={() => openEditSchedule(row)} tone="amber" /><ActionIconButton label="Edit questions" icon={Pencil} onClick={() => manageExamQuestions(row)} tone="blue" /><ActionIconButton label="Delete exam" icon={Trash2} onClick={() => setDeleteTarget(row)} tone="red" /></>) : <span className="text-xs font-semibold text-slate-400 dark:text-slate-500">View only</span>}</div>
+          <div className="flex items-center gap-2"><ActionIconButton label="Edit schedule" icon={CalendarClock} onClick={() => openEditSchedule(row)} tone="amber" />{isAdmin && <><ActionIconButton label="Edit questions" icon={Pencil} onClick={() => manageExamQuestions(row)} tone="blue" /><ActionIconButton label="Delete exam" icon={Trash2} onClick={() => setDeleteTarget(row)} tone="red" /></>}</div>
         ) }
       ]} rows={exams} />
       <section id="exam-questions" className="space-y-4 rounded-xl border border-blue-100 bg-white p-4 shadow-soft dark:border-slate-800 dark:bg-[#111a2b]">
@@ -750,7 +751,7 @@ export default function ExamManagement() {
                       </div>
                       <p className="mt-3 whitespace-pre-wrap text-sm font-semibold leading-6 text-slate-950 dark:text-slate-100">{question.questionText}</p>
                     </div>
-                    {canManageExamId(questionExamId(question)) && <div className="flex shrink-0 gap-2">
+                    {isAdmin && <div className="flex shrink-0 gap-2">
                       <ActionIconButton label="Edit question" icon={Pencil} onClick={() => { setQuestionDetail(null); openEditQuestion(question); }} tone="blue" />
                       <ActionIconButton label="Delete question" icon={Trash2} onClick={() => { setQuestionDetail(null); setQuestionDeleteTarget(question); }} tone="red" />
                     </div>}
@@ -829,15 +830,16 @@ export default function ExamManagement() {
         <Modal title={editingExamId ? "Edit Schedule" : "Create Exam"} onClose={() => { setModal(null); setEditingExamId(""); }}>
           <form className="grid gap-3 sm:grid-cols-2" onSubmit={saveExam}>
             {formError && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm font-semibold text-red-700 dark:bg-red-950/30 dark:text-red-200 sm:col-span-2">{formError}</p>}
-            <select className="input sm:col-span-2" value={examForm.courseId} onChange={(e) => setExamForm({ ...examForm, courseId: e.target.value })} required>
+            {scheduleOnly && <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-700 dark:bg-amber-950/30 dark:text-amber-200 sm:col-span-2">You can change only the exam date, starting time and extra time.</p>}
+            <select className="input sm:col-span-2" value={examForm.courseId} onChange={(e) => setExamForm({ ...examForm, courseId: e.target.value })} disabled={scheduleOnly} required>
               <option value="">Select course</option>
               {courses.map((course) => <option key={course._id} value={course._id}>{course.courseCode} - {course.courseName}</option>)}
             </select>
-            <input className="input sm:col-span-2" placeholder="Exam title" value={examForm.title} onChange={(e) => setExamForm({ ...examForm, title: e.target.value })} required />
-            <input className="input" type="number" min="1" placeholder="Exam total time (minutes)" value={examForm.durationMinutes} onChange={(e) => setExamForm({ ...examForm, durationMinutes: e.target.value })} required />
+            <input className="input sm:col-span-2" placeholder="Exam title" value={examForm.title} onChange={(e) => setExamForm({ ...examForm, title: e.target.value })} disabled={scheduleOnly} required />
+            <input className="input" type="number" min="1" placeholder="Exam total time (minutes)" value={examForm.durationMinutes} onChange={(e) => setExamForm({ ...examForm, durationMinutes: e.target.value })} disabled={scheduleOnly} required />
             <input className="input" type="number" min="0" placeholder="Extra time minutes" value={examForm.extraTimeMinutes} onChange={(e) => setExamForm({ ...examForm, extraTimeMinutes: e.target.value })} />
-            <input className="input" type="number" placeholder="Total marks" value={examForm.totalMarks} onChange={(e) => setExamForm({ ...examForm, totalMarks: e.target.value })} required />
-            <input className="input" type="number" placeholder="Pass percentage" value={examForm.passPercentage} onChange={(e) => setExamForm({ ...examForm, passPercentage: e.target.value })} required />
+            <input className="input" type="number" placeholder="Total marks" value={examForm.totalMarks} onChange={(e) => setExamForm({ ...examForm, totalMarks: e.target.value })} disabled={scheduleOnly} required />
+            <input className="input" type="number" placeholder="Pass percentage" value={examForm.passPercentage} onChange={(e) => setExamForm({ ...examForm, passPercentage: e.target.value })} disabled={scheduleOnly} required />
             <label className="space-y-1 text-sm font-semibold text-slate-600">
               <span>Exam date</span>
               <input className="input" type="date" value={examDateValue} onChange={(e) => setExamForm({ ...examForm, startDate: combineLocalDateAndTime(e.target.value, examStartTimeValue) })} required />
@@ -850,7 +852,7 @@ export default function ExamManagement() {
               <span className="block">End time</span>
               <span className="block text-slate-950 dark:text-slate-100">{calculatedEndDate ? calculatedEndDate.toLocaleString() : "Calculated from start time"}</span>
             </div>
-            <textarea className="input sm:col-span-2" placeholder="Description" value={examForm.description} onChange={(e) => setExamForm({ ...examForm, description: e.target.value })} />
+            <textarea className="input sm:col-span-2" placeholder="Description" value={examForm.description} onChange={(e) => setExamForm({ ...examForm, description: e.target.value })} disabled={scheduleOnly} />
             <div className="grid gap-3 sm:col-span-2 sm:grid-cols-2">
               <button className="btn-secondary" type="submit" value="save" disabled={Boolean(editingExamId) && savingId === editingExamId}>{Boolean(editingExamId) && savingId === editingExamId ? "Saving..." : editingExamId ? "Save Schedule" : "Save Exam"}</button>
               {!editingExamId && <button className="btn-primary" type="submit" value="addQuestions"><Plus size={16} /> Save Exam and Add Questions</button>}
@@ -865,7 +867,7 @@ export default function ExamManagement() {
               <span>Exam</span>
               <select className="input" value={extraTimeForm.examId} onChange={(e) => setExtraTimeForm({ ...extraTimeForm, examId: e.target.value })} required>
                 <option value="">Select exam</option>
-                {manageableExams.map((exam) => <option key={exam._id} value={exam._id}>{exam.title} - {exam.courseId?.courseCode || exam.courseId?.courseName || "Course"}</option>)}
+                {exams.map((exam) => <option key={exam._id} value={exam._id}>{exam.title} - {exam.courseId?.courseCode || exam.courseId?.courseName || "Course"}</option>)}
               </select>
             </label>
             <label className="space-y-1 text-sm font-semibold text-slate-600 dark:text-slate-300">

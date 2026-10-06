@@ -7,7 +7,6 @@ import { courseMatchesTraining, findAssignedCourseForStudent } from "../utils/co
 import { logActivity } from "../utils/logger.js";
 import { scheduledExamEnd, scheduledRemainingSeconds } from "../utils/examTiming.js";
 import { canGrantRetake } from "../utils/retakePolicy.js";
-import { canManageExam } from "../utils/examOwnership.js";
 import { isCertificateVisibleToStudent, issueCertificate } from "./certificate.controller.js";
 
 function normalizeAnswer(value = "") {
@@ -100,8 +99,16 @@ export async function updateExam(req, res, next) {
   try {
     const exam = await Exam.findById(req.params.id);
     if (!exam) return res.status(404).json({ message: "Exam not found" });
-    if (!canManageExam(req.user, exam)) return res.status(403).json({ message: "You can only edit exams you created" });
-    exam.set(req.body);
+    if (req.user.role === "ADMIN") {
+      exam.set(req.body);
+    } else {
+      // Customer service may only reschedule: start time and extra time. Other details stay as they are.
+      const endDate = calculateEndDate(req.body.startDate, exam.durationMinutes, req.body.extraTimeMinutes);
+      if (new Date(req.body.startDate).toDateString() !== endDate.toDateString()) {
+        return res.status(400).json({ message: "Exam duration must end on the same date as the selected start date." });
+      }
+      exam.set({ startDate: req.body.startDate, extraTimeMinutes: req.body.extraTimeMinutes, endDate });
+    }
     await exam.save();
     res.json(exam);
   } catch (error) {
@@ -113,7 +120,6 @@ export async function deleteExam(req, res, next) {
   try {
     const exam = await Exam.findById(req.params.id);
     if (!exam) return res.status(404).json({ message: "Exam not found" });
-    if (!canManageExam(req.user, exam)) return res.status(403).json({ message: "You can only delete exams you created" });
     await exam.deleteOne();
     await Question.deleteMany({ examId: req.params.id });
     res.status(204).end();
