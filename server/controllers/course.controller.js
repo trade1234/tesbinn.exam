@@ -3,6 +3,7 @@ import { Course } from "../models/Course.js";
 import { Exam } from "../models/Exam.js";
 import { canManageCourse } from "../utils/examOwnership.js";
 import { logActivity } from "../utils/logger.js";
+import { findAssignedCourseForStudent } from "../utils/courseAccess.js";
 
 export const courseSchema = z.object({
   body: z.object({
@@ -25,6 +26,11 @@ export async function listCourses(req, res, next) {
     const query = search
       ? { $or: [{ courseName: new RegExp(search, "i") }, { courseCode: new RegExp(search, "i") }] }
       : {};
+    if (req.user.role === "STUDENT") {
+      const assignedCourse = await findAssignedCourseForStudent(req.user);
+      if (!assignedCourse) return res.json([]);
+      query._id = assignedCourse._id;
+    }
     const courses = await Course.find(query).populate("createdBy", "name role").sort({ createdAt: -1 });
     const exams = await Exam.aggregate([{ $group: { _id: "$courseId", count: { $sum: 1 } } }]);
     const counts = new Map(exams.map((item) => [String(item._id), item.count]));

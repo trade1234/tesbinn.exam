@@ -2,6 +2,7 @@ import { z } from "zod";
 import { Question } from "../models/Question.js";
 import { Exam } from "../models/Exam.js";
 import { canManageExam } from "../utils/examOwnership.js";
+import { findAssignedCourseForStudent } from "../utils/courseAccess.js";
 
 async function ensureCanManageExams(req, res, examIds) {
   const ids = [...new Set(examIds.filter(Boolean).map(String))];
@@ -49,6 +50,13 @@ export const questionSchema = z.object({
 export async function listQuestions(req, res, next) {
   try {
     const query = req.query.examId ? { examId: req.query.examId } : {};
+    if (req.user.role === "STUDENT") {
+      const assignedCourse = await findAssignedCourseForStudent(req.user);
+      if (!assignedCourse) return res.json([]);
+      const courseExamIds = (await Exam.find({ courseId: assignedCourse._id }).distinct("_id")).map(String);
+      if (query.examId && !courseExamIds.includes(String(query.examId))) return res.json([]);
+      if (!query.examId) query.examId = { $in: courseExamIds };
+    }
     const projection = req.user.role === "STUDENT" ? "-correctAnswer" : "";
     res.json(await Question.find(query).select(projection).populate("examId", "title courseId").sort({ createdAt: -1, order: -1 }));
   } catch (error) {
