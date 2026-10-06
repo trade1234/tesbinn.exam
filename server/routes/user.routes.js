@@ -24,18 +24,18 @@ const updateStudentSchema = z.object({
     generatePassword: z.boolean().optional()
   })
 });
-router.get("/students", protect, authorize("ADMIN"), listStudents);
+router.get("/students", protect, authorize("ADMIN", "CUSTOMER_SERVICE"), listStudents);
 router.get("/students/export/pdf", protect, authorize("ADMIN"), exportStudentRegistrationsPdf);
 router.get("/students/export/excel", protect, authorize("ADMIN"), exportStudentRegistrationsExcel);
-router.post("/students", protect, authorize("ADMIN"), validate(createStudentSchema), createStudent);
-router.put("/students/:id", protect, authorize("ADMIN"), validate(updateStudentSchema), updateStudent);
+router.post("/students", protect, authorize("ADMIN", "CUSTOMER_SERVICE"), validate(createStudentSchema), createStudent);
+router.put("/students/:id", protect, authorize("ADMIN", "CUSTOMER_SERVICE"), validate(updateStudentSchema), updateStudent);
 router.delete("/students/:id", protect, authorize("ADMIN"), deleteStudent);
 router.patch("/students/:id/active", protect, authorize("ADMIN"), validate(z.object({ body: z.object({ isActive: z.boolean() }) })), setStudentActive);
 router.get("/accounts", protect, authorize("ADMIN"), listAccounts);
 router.post("/accounts", protect, authorize("ADMIN"), validate(createAccountSchema), createAccount);
 router.patch("/accounts/:id", protect, authorize("ADMIN"), validate(updateAccountSchema), updateAccount);
 router.delete("/accounts/:id", protect, authorize("ADMIN"), deleteAccount);
-router.get("/online", protect, authorize("ADMIN", "CUSTOMER_SERVICE"), listOnlineStudents);
+router.get("/online", protect, authorize("ADMIN"), listOnlineStudents);
 router.get("/activity-logs", protect, authorize("ADMIN"), listActivityLogs);
 router.get("/activity-logs/search", protect, authorize("ADMIN"), searchActivityLogs);
 router.get("/dashboard/student", protect, authorize("STUDENT"), studentDashboard);

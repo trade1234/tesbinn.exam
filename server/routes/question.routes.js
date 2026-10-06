@@ -6,9 +6,9 @@ import { bulkCreateQuestions, createQuestion, deleteQuestion, listQuestions, que
 
 const router = Router();
 
-router.get("/", protect, listQuestions);
-router.post("/", protect, authorize("ADMIN", "CUSTOMER_SERVICE"), validate(questionSchema), createQuestion);
-router.post("/bulk", protect, authorize("ADMIN", "CUSTOMER_SERVICE"), validate(z.object({ body: z.object({ questions: z.array(questionSchema.shape.body) }) })), bulkCreateQuestions);
+router.get("/", protect, authorize("ADMIN", "STUDENT"), listQuestions);
+router.post("/", protect, authorize("ADMIN"), validate(questionSchema), createQuestion);
+router.post("/bulk", protect, authorize("ADMIN"), validate(z.object({ body: z.object({ questions: z.array(questionSchema.shape.body) }) })), bulkCreateQuestions);
 router.put("/:id", protect, authorize("ADMIN"), validate(questionSchema), updateQuestion);
 router.delete("/:id", protect, authorize("ADMIN"), deleteQuestion);
 

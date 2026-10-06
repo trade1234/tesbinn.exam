@@ -38,7 +38,7 @@ export default function Layout({ role }) {
   }, [darkMode]);
 
   useEffect(() => {
-    if (!user) return undefined;
+    if (!user || role === "CUSTOMER_SERVICE") return undefined;
 
     let stopped = false;
 
@@ -157,16 +157,13 @@ export default function Layout({ role }) {
   ];
   const supportLinks = [
     { to: "/support", label: "Dashboard", icon: Headset },
-    { to: "/support/exams", label: "Exams & Schedule", icon: ClipboardList },
-    { to: "/support/retakes", label: "Retake Exams", icon: RotateCcw },
-    { to: "/support/monitor", label: "Live Monitor", icon: Radio }
+    { to: "/support/students", label: "Students", icon: Users }
   ];
   const links = role === "ADMIN" ? adminLinks : role === "CUSTOMER_SERVICE" ? supportLinks : studentLinks;
   const roleTitle = role === "ADMIN" ? "Admin" : role === "CUSTOMER_SERVICE" ? "Support" : "Exams";
   const groups = role === "CUSTOMER_SERVICE"
     ? [
-      { label: "Create Exam", to: "/support/exams" },
-      { label: "Retakes", to: "/support/retakes" }
+      { label: "Students", to: "/support/students" }
     ]
     : role === "ADMIN"
     ? [

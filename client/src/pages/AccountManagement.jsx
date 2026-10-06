@@ -9,7 +9,7 @@ export const ROLE_LABELS = { ADMIN: "Admin", CUSTOMER_SERVICE: "Customer Service
 
 const ROLE_DESCRIPTIONS = {
   ADMIN: "Full access to every admin page, including account management.",
-  CUSTOMER_SERVICE: "Can create exams, schedule exams and approve retakes only."
+  CUSTOMER_SERVICE: "Can create, view, and edit students only."
 };
 
 const emptyForm = { name: "", email: "", password: "", role: "CUSTOMER_SERVICE" };

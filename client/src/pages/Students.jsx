@@ -2,9 +2,11 @@ import { useEffect, useState } from "react";
 import { AlertTriangle, Search, UserPlus, Copy, Check, Download, KeyRound, Pencil, Trash2 } from "lucide-react";
 import DataTable from "../components/DataTable.jsx";
 import Modal from "../components/Modal.jsx";
+import { useAuth } from "../context/AuthContext.jsx";
 import { api, downloadFile } from "../services/api.js";
 
 export default function Students() {
+  const { isAdmin } = useAuth();
   const [rows, setRows] = useState([]);
   const [courses, setCourses] = useState([]);
   const [search, setSearch] = useState("");
@@ -154,11 +156,11 @@ export default function Students() {
       <div className="flex min-w-0 flex-col justify-between gap-3 md:flex-row md:items-start">
         <div>
           <h2 className="break-words text-2xl font-bold">Student Management</h2>
-          <p className="break-words text-sm text-slate-500">Search, activate, deactivate, and add student accounts.</p>
+          <p className="break-words text-sm text-slate-500">{isAdmin ? "Search, activate, deactivate, and add student accounts." : "Create, search, and edit student accounts."}</p>
         </div>
         <div className="grid w-full gap-2 sm:flex sm:w-auto">
-          <button className="btn-secondary" type="button" onClick={() => downloadFile(`/users/students/export/pdf${exportQuery()}`, "student-registrations.pdf")}><Download size={16} /> PDF</button>
-          <button className="btn-secondary" type="button" onClick={() => downloadFile(`/users/students/export/excel${exportQuery()}`, "student-registrations.xlsx")}><Download size={16} /> Excel</button>
+          {isAdmin && <button className="btn-secondary" type="button" onClick={() => downloadFile(`/users/students/export/pdf${exportQuery()}`, "student-registrations.pdf")}><Download size={16} /> PDF</button>}
+          {isAdmin && <button className="btn-secondary" type="button" onClick={() => downloadFile(`/users/students/export/excel${exportQuery()}`, "student-registrations.xlsx")}><Download size={16} /> Excel</button>}
           <button className="btn-primary" onClick={openModal}><UserPlus size={16} /> Add Student</button>
         </div>
       </div>
@@ -202,15 +204,15 @@ export default function Students() {
         { key: "actions", label: "Actions", render: (row) => (
           <div className="flex flex-wrap gap-2">
             <button className="btn-secondary" onClick={() => openEdit(row)}><Pencil size={14} /> Edit</button>
-            <button className="btn-secondary" onClick={() => toggle(row)}>{row.isActive ? "Deactivate" : "Activate"}</button>
-            <button
+            {isAdmin && <button className="btn-secondary" onClick={() => toggle(row)}>{row.isActive ? "Deactivate" : "Activate"}</button>}
+            {isAdmin && <button
               className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-100 hover:text-red-700 dark:bg-red-950/30 dark:text-red-400 dark:hover:bg-red-950/60"
               onClick={() => setDeleteTarget(row)}
               title="Delete student"
               type="button"
             >
               <Trash2 size={14} /> Delete
-            </button>
+            </button>}
           </div>
         ) }
       ]} rows={rows} />
