@@ -4,7 +4,10 @@ const configuredApiUrl = import.meta.env.VITE_API_URL?.replace(/\/$/, "");
 const isLocalApiUrl = configuredApiUrl && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?($|\/)/.test(configuredApiUrl);
 const normalizedConfiguredApiUrl = configuredApiUrl && !configuredApiUrl.endsWith("/api") ? `${configuredApiUrl}/api` : configuredApiUrl;
 
-export const apiBaseURL = import.meta.env.PROD && isLocalApiUrl ? "/api" : normalizedConfiguredApiUrl || "/api";
+// In production the API is reached through the same-origin /api rewrite (vercel.json) so the
+// session cookie stays first-party; set VITE_API_DIRECT=true to call VITE_API_URL cross-site instead.
+const useDirectApi = import.meta.env.VITE_API_DIRECT === "true";
+export const apiBaseURL = import.meta.env.PROD && (isLocalApiUrl || !useDirectApi) ? "/api" : normalizedConfiguredApiUrl || "/api";
 
 export const api = axios.create({
   baseURL: apiBaseURL,

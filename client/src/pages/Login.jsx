@@ -32,7 +32,7 @@ export default function Login() {
       if (err.response?.data?.message) {
         setError(err.response.data.message);
       } else if (err.request) {
-        setError(`Cannot reach the backend API. Check Render frontend VITE_API_URL. Current API URL: ${apiBaseURL || "not configured"}`);
+        setError(`Cannot reach the backend API. Check the frontend VITE_API_URL. Current API URL: ${apiBaseURL || "not configured"}`);
       } else {
         setError(err.message || "Login failed");
       }
