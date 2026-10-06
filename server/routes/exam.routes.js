@@ -24,6 +24,6 @@ router.post("/attempts/:attemptId/retake", protect, authorize("ADMIN", "CUSTOMER
 router.put("/:id", protect, authorize("ADMIN", "CUSTOMER_SERVICE"), validate(examSchema), updateExam);
 router.patch("/:id/pause", protect, authorize("ADMIN"), pauseExam);
 router.patch("/:id/resume", protect, authorize("ADMIN"), resumeExam);
-router.delete("/:id", protect, authorize("ADMIN"), deleteExam);
+router.delete("/:id", protect, authorize("ADMIN", "CUSTOMER_SERVICE"), deleteExam);
 
 export default router;

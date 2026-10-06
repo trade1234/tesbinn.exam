@@ -12,7 +12,8 @@ const examSchema = new mongoose.Schema(
     startDate: { type: Date, required: true },
     endDate: { type: Date, required: true },
     isPaused: { type: Boolean, default: false },
-    pausedAt: Date
+    pausedAt: Date,
+    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" }
   },
   { timestamps: true }
 );

@@ -1,5 +1,21 @@
 import { z } from "zod";
 import { Question } from "../models/Question.js";
+import { Exam } from "../models/Exam.js";
+import { canManageExam } from "../utils/examOwnership.js";
+
+async function ensureCanManageExams(req, res, examIds) {
+  const ids = [...new Set(examIds.filter(Boolean).map(String))];
+  const exams = await Exam.find({ _id: { $in: ids } }).select("createdBy");
+  if (exams.length !== ids.length) {
+    res.status(404).json({ message: "Exam not found" });
+    return false;
+  }
+  if (!exams.every((exam) => canManageExam(req.user, exam))) {
+    res.status(403).json({ message: "You can only manage questions for exams you created" });
+    return false;
+  }
+  return true;
+}
 
 export const questionSchema = z.object({
   body: z.object({
@@ -43,6 +59,7 @@ export async function listQuestions(req, res, next) {
 export async function createQuestion(req, res, next) {
   try {
     const body = { ...req.body };
+    if (!(await ensureCanManageExams(req, res, [body.examId]))) return;
     if (body.order === undefined) {
       const lastQuestion = await Question.findOne({ examId: body.examId }).sort({ order: -1, createdAt: -1 });
       body.order = (lastQuestion?.order || 0) + 1;
@@ -55,6 +72,7 @@ export async function createQuestion(req, res, next) {
 
 export async function bulkCreateQuestions(req, res, next) {
   try {
+    if (!(await ensureCanManageExams(req, res, req.body.questions.map((question) => question.examId)))) return;
     const counters = new Map();
     const questionsWithOrder = [];
     for (const question of req.body.questions) {
@@ -81,8 +99,11 @@ export async function bulkCreateQuestions(req, res, next) {
 
 export async function updateQuestion(req, res, next) {
   try {
-    const question = await Question.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+    const question = await Question.findById(req.params.id);
     if (!question) return res.status(404).json({ message: "Question not found" });
+    if (!(await ensureCanManageExams(req, res, [question.examId, req.body.examId]))) return;
+    question.set(req.body);
+    await question.save();
     res.json(question);
   } catch (error) {
     next(error);
@@ -91,8 +112,10 @@ export async function updateQuestion(req, res, next) {
 
 export async function deleteQuestion(req, res, next) {
   try {
-    const question = await Question.findByIdAndDelete(req.params.id);
+    const question = await Question.findById(req.params.id);
     if (!question) return res.status(404).json({ message: "Question not found" });
+    if (!(await ensureCanManageExams(req, res, [question.examId]))) return;
+    await question.deleteOne();
     res.status(204).end();
   } catch (error) {
     next(error);

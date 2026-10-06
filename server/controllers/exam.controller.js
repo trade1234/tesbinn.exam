@@ -7,6 +7,7 @@ import { courseMatchesTraining, findAssignedCourseForStudent } from "../utils/co
 import { logActivity } from "../utils/logger.js";
 import { scheduledExamEnd, scheduledRemainingSeconds } from "../utils/examTiming.js";
 import { canGrantRetake } from "../utils/retakePolicy.js";
+import { canManageExam } from "../utils/examOwnership.js";
 import { isCertificateVisibleToStudent, issueCertificate } from "./certificate.controller.js";
 
 function normalizeAnswer(value = "") {
@@ -89,7 +90,7 @@ export async function listExams(req, res, next) {
 
 export async function createExam(req, res, next) {
   try {
-    res.status(201).json(await Exam.create(req.body));
+    res.status(201).json(await Exam.create({ ...req.body, createdBy: req.user._id }));
   } catch (error) {
     next(error);
   }
@@ -97,8 +98,11 @@ export async function createExam(req, res, next) {
 
 export async function updateExam(req, res, next) {
   try {
-    const exam = await Exam.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+    const exam = await Exam.findById(req.params.id);
     if (!exam) return res.status(404).json({ message: "Exam not found" });
+    if (!canManageExam(req.user, exam)) return res.status(403).json({ message: "You can only edit exams you created" });
+    exam.set(req.body);
+    await exam.save();
     res.json(exam);
   } catch (error) {
     next(error);
@@ -107,8 +111,10 @@ export async function updateExam(req, res, next) {
 
 export async function deleteExam(req, res, next) {
   try {
-    const exam = await Exam.findByIdAndDelete(req.params.id);
+    const exam = await Exam.findById(req.params.id);
     if (!exam) return res.status(404).json({ message: "Exam not found" });
+    if (!canManageExam(req.user, exam)) return res.status(403).json({ message: "You can only delete exams you created" });
+    await exam.deleteOne();
     await Question.deleteMany({ examId: req.params.id });
     res.status(204).end();
   } catch (error) {

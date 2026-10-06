@@ -206,7 +206,7 @@ function toExamPayload(exam, overrides = {}) {
 }
 
 export default function ExamManagement() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
   const [courses, setCourses] = useState([]);
   const [exams, setExams] = useState([]);
   const [questions, setQuestions] = useState([]);
@@ -215,6 +215,10 @@ export default function ExamManagement() {
   const [editingExamId, setEditingExamId] = useState("");
   const [questionForm, setQuestionForm] = useState(blankQuestion);
   const [extraTimeForm, setExtraTimeForm] = useState(blankExtraTime);
+  // Customer service may only edit or delete exams they created; admins manage all exams.
+  const canManageExam = (exam) => isAdmin || (!!user?._id && String(exam?.createdBy?._id || exam?.createdBy || "") === String(user._id));
+  const manageableExams = exams.filter(canManageExam);
+  const canManageExamId = (examId) => manageableExams.some((exam) => exam._id === examId);
   const [questionBatch, setQuestionBatch] = useState(blankQuestionBatch);
   const [pendingQuestions, setPendingQuestions] = useState([]);
   const [questionStep, setQuestionStep] = useState(1);
@@ -351,7 +355,7 @@ export default function ExamManagement() {
   }
 
   function openAddQuestion() {
-    const examId = selectedQuestionExamId === allQuestionsExamId ? exams[0]?._id || "" : selectedQuestionExamId || exams[0]?._id || "";
+    const examId = canManageExamId(selectedQuestionExamId) ? selectedQuestionExamId : manageableExams[0]?._id || "";
     setFormError("");
     const savedDraft = readQuestionDraft();
     if (hasQuestionDraft(savedDraft)) {
@@ -373,7 +377,7 @@ export default function ExamManagement() {
   }
 
   function discardQuestionDraft() {
-    const examId = selectedQuestionExamId === allQuestionsExamId ? exams[0]?._id || "" : selectedQuestionExamId || exams[0]?._id || "";
+    const examId = canManageExamId(selectedQuestionExamId) ? selectedQuestionExamId : manageableExams[0]?._id || "";
     localStorage.removeItem(questionDraftStorageKey);
     setPendingQuestions([]);
     setQuestionStep(1);
@@ -652,7 +656,7 @@ export default function ExamManagement() {
         { key: "startDate", label: "Starts", render: (row) => formatDateTime(row.startDate) },
         { key: "endDate", label: "Ends", render: (row) => formatDateTime(row.endDate) },
         { key: "actions", label: "Actions", render: (row) => (
-          <div className="flex items-center gap-2"><ActionIconButton label="Edit schedule" icon={CalendarClock} onClick={() => openEditSchedule(row)} tone="amber" /><ActionIconButton label="Edit questions" icon={Pencil} onClick={() => manageExamQuestions(row)} tone="blue" />{isAdmin && <ActionIconButton label="Delete exam" icon={Trash2} onClick={() => setDeleteTarget(row)} tone="red" />}</div>
+          <div className="flex items-center gap-2">{canManageExam(row) ? (<><ActionIconButton label="Edit schedule" icon={CalendarClock} onClick={() => openEditSchedule(row)} tone="amber" /><ActionIconButton label="Edit questions" icon={Pencil} onClick={() => manageExamQuestions(row)} tone="blue" /><ActionIconButton label="Delete exam" icon={Trash2} onClick={() => setDeleteTarget(row)} tone="red" /></>) : <span className="text-xs font-semibold text-slate-400 dark:text-slate-500">View only</span>}</div>
         ) }
       ]} rows={exams} />
       <section id="exam-questions" className="space-y-4 rounded-xl border border-blue-100 bg-white p-4 shadow-soft dark:border-slate-800 dark:bg-[#111a2b]">
@@ -671,7 +675,7 @@ export default function ExamManagement() {
               <Search className="absolute left-3 top-2.5 text-slate-400" size={16} />
               <input className="input pl-9" placeholder="Search questions" value={questionSearch} onChange={(event) => setQuestionSearch(event.target.value)} />
             </label>
-            <button className="btn-primary whitespace-nowrap" type="button" onClick={openAddQuestion}><Plus size={16} /> Add Question</button>
+            <button className="btn-primary whitespace-nowrap" type="button" onClick={openAddQuestion} disabled={!manageableExams.length}><Plus size={16} /> Add Question</button>
           </div>
         </div>
 
@@ -746,10 +750,10 @@ export default function ExamManagement() {
                       </div>
                       <p className="mt-3 whitespace-pre-wrap text-sm font-semibold leading-6 text-slate-950 dark:text-slate-100">{question.questionText}</p>
                     </div>
-                    <div className="flex shrink-0 gap-2">
+                    {canManageExamId(questionExamId(question)) && <div className="flex shrink-0 gap-2">
                       <ActionIconButton label="Edit question" icon={Pencil} onClick={() => { setQuestionDetail(null); openEditQuestion(question); }} tone="blue" />
                       <ActionIconButton label="Delete question" icon={Trash2} onClick={() => { setQuestionDetail(null); setQuestionDeleteTarget(question); }} tone="red" />
-                    </div>
+                    </div>}
                   </div>
 
                   {question.questionType === "MULTIPLE_CHOICE" && (
@@ -861,7 +865,7 @@ export default function ExamManagement() {
               <span>Exam</span>
               <select className="input" value={extraTimeForm.examId} onChange={(e) => setExtraTimeForm({ ...extraTimeForm, examId: e.target.value })} required>
                 <option value="">Select exam</option>
-                {exams.map((exam) => <option key={exam._id} value={exam._id}>{exam.title} - {exam.courseId?.courseCode || exam.courseId?.courseName || "Course"}</option>)}
+                {manageableExams.map((exam) => <option key={exam._id} value={exam._id}>{exam.title} - {exam.courseId?.courseCode || exam.courseId?.courseName || "Course"}</option>)}
               </select>
             </label>
             <label className="space-y-1 text-sm font-semibold text-slate-600 dark:text-slate-300">
@@ -887,7 +891,7 @@ export default function ExamManagement() {
                 <span>Exam</span>
                 <select className="input" value={questionBatch.examId} onChange={(event) => setQuestionBatch({ ...questionBatch, examId: event.target.value })} disabled={pendingQuestions.length > 0} required>
                   <option value="">Select exam</option>
-                  {exams.map((exam) => <option key={exam._id} value={exam._id}>{exam.title}</option>)}
+                  {manageableExams.map((exam) => <option key={exam._id} value={exam._id}>{exam.title}</option>)}
                 </select>
               </label>
               <label className="space-y-1 text-sm font-semibold text-slate-600 dark:text-slate-300">
@@ -975,7 +979,7 @@ export default function ExamManagement() {
             {formError && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm font-semibold text-red-700 dark:bg-red-950/30 dark:text-red-200 sm:col-span-2">{formError}</p>}
             <select className="input sm:col-span-2" value={questionForm.examId} onChange={(e) => setQuestionForm({ ...questionForm, examId: e.target.value })} required>
               <option value="">Select exam</option>
-              {exams.map((exam) => <option key={exam._id} value={exam._id}>{exam.title}</option>)}
+              {manageableExams.map((exam) => <option key={exam._id} value={exam._id}>{exam.title}</option>)}
             </select>
             <select
               className="input sm:col-span-2"
