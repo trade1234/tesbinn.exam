@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ExternalLink, Eye, EyeOff, QrCode, RefreshCw, Search, ShieldCheck, ShieldOff } from "lucide-react";
+import { AlertTriangle, ExternalLink, Eye, EyeOff, QrCode, RefreshCw, Search, ShieldCheck, ShieldOff } from "lucide-react";
 import DataTable from "../components/DataTable.jsx";
+import Modal from "../components/Modal.jsx";
 import { api } from "../services/api.js";
 import { TableSkeleton } from "../components/Skeleton.jsx";
 
@@ -18,9 +19,40 @@ function Toggle({ on, onChange, disabled, onLabel, offLabel, OnIcon, OffIcon }) 
   );
 }
 
-function askReason(subject) {
-  const reason = window.prompt(`Deactivate ${subject}?\nQR scans will show "Not verified". Optional reason shown on the verification page:`, "");
-  return reason === null ? null : reason.trim();
+const reasonPresets = ["Issued in error", "Course requirements not met", "Under review", "Replaced by a new certificate"];
+
+function DeactivateDialog({ request, busy, onCancel, onConfirm }) {
+  const [reason, setReason] = useState("");
+  return (
+    <Modal title="Deactivate QR verification" onClose={busy ? () => {} : onCancel} widthClass="max-w-lg">
+      <form className="space-y-5" onSubmit={(e) => { e.preventDefault(); onConfirm(reason.trim()); }}>
+        <div className="flex gap-3 rounded-xl border border-red-100 bg-red-50 p-4 dark:border-red-900/50 dark:bg-red-950/30">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-600 dark:bg-red-900/50 dark:text-red-300"><AlertTriangle size={20} /></span>
+          <div className="min-w-0 text-sm">
+            <p className="font-bold text-slate-950 dark:text-slate-100">{request.title}</p>
+            <p className="mt-1 text-slate-600 dark:text-slate-300">{request.detail}</p>
+            <p className="mt-2 text-slate-600 dark:text-slate-300">QR scans will show <span className="font-semibold text-red-700 dark:text-red-300">"Not verified"</span>. You can reactivate at any time.</p>
+          </div>
+        </div>
+        <label className="block">
+          <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">Reason <span className="font-normal text-slate-500">(optional, shown on the verification page)</span></span>
+          <textarea className="input mt-2 min-h-24 resize-y" maxLength={300} autoFocus placeholder="e.g. Certificate issued in error" value={reason} onChange={(e) => setReason(e.target.value)} />
+          <span className="mt-1 block text-right text-xs text-slate-400">{reason.length}/300</span>
+        </label>
+        <div className="flex flex-wrap gap-2">
+          {reasonPresets.map((preset) => (
+            <button key={preset} type="button" className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${reason === preset ? "border-red-300 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300" : "border-slate-200 text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"}`} onClick={() => setReason(preset)}>{preset}</button>
+          ))}
+        </div>
+        <div className="flex flex-col-reverse gap-2 border-t border-slate-100 pt-4 sm:flex-row sm:justify-end dark:border-slate-800">
+          <button type="button" className="btn-secondary" onClick={onCancel} disabled={busy}>Cancel</button>
+          <button type="submit" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-red-300" disabled={busy}>
+            <ShieldOff size={16} /> {busy ? "Deactivating..." : "Deactivate"}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
 }
 
 export default function CertificateAccess() {
@@ -49,13 +81,21 @@ export default function CertificateAccess() {
 
   useEffect(() => { load(); }, [load]);
 
+  const [deactivation, setDeactivation] = useState(null);
+
   async function updateCourse(course, changes) {
-    let body = changes;
     if (changes.certificatesActive === false) {
-      const reason = askReason(`all certificates for "${course.courseName}"`);
-      if (reason === null) return;
-      body = { ...changes, reason };
+      setDeactivation({
+        title: `All certificates for "${course.courseName}"`,
+        detail: `This affects ${course.certificateCount} certificate${course.certificateCount === 1 ? "" : "s"} in ${course.courseCode}.`,
+        run: (reason) => sendCourseUpdate(course, { ...changes, reason })
+      });
+      return;
     }
+    await sendCourseUpdate(course, changes);
+  }
+
+  async function sendCourseUpdate(course, body) {
     setBusy(course._id);
     try {
       await api.patch(`/certificates/access/courses/${course._id}`, body);
@@ -68,12 +108,25 @@ export default function CertificateAccess() {
   }
 
   async function updateCertificate(certificate, changes) {
-    let body = changes;
     if (changes.isActive === false) {
-      const reason = askReason(`certificate ${certificate.certificateId}`);
-      if (reason === null) return;
-      body = { ...changes, reason };
+      setDeactivation({
+        title: `Certificate ${certificate.certificateId}`,
+        detail: `${certificate.studentName} · ${certificate.courseName}`,
+        run: (reason) => sendCertificateUpdate(certificate, { ...changes, reason })
+      });
+      return;
     }
+    await sendCertificateUpdate(certificate, changes);
+  }
+
+  async function confirmDeactivation(reason) {
+    const { run } = deactivation;
+    setDeactivation((current) => current && { ...current, busy: true });
+    await run(reason);
+    setDeactivation(null);
+  }
+
+  async function sendCertificateUpdate(certificate, body) {
     setBusy(certificate._id);
     try {
       await api.patch(`/certificates/${certificate._id}/access`, body);
@@ -172,6 +225,8 @@ export default function CertificateAccess() {
         </div>
         {loading ? <TableSkeleton columns={6} /> : <DataTable columns={columns} rows={rows} empty="No certificates match these filters." />}
       </section>
+
+      {deactivation && <DeactivateDialog request={deactivation} busy={Boolean(deactivation.busy)} onCancel={() => setDeactivation(null)} onConfirm={confirmDeactivation} />}
     </div>
   );
 }
