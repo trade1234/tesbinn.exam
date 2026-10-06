@@ -215,7 +215,7 @@ export default function ExamManagement() {
   const [editingExamId, setEditingExamId] = useState("");
   const [questionForm, setQuestionForm] = useState(blankQuestion);
   const [extraTimeForm, setExtraTimeForm] = useState(blankExtraTime);
-  // Customer service can reschedule any exam and add questions only to exams they created; admins manage everything.
+  // Customer service can reschedule any exam and edit only exams they created; admins manage everything.
   const canManageExam = (exam) => isAdmin || (!!user?._id && String(exam?.createdBy?._id || exam?.createdBy || "") === String(user._id));
   const manageableExams = exams.filter(canManageExam);
   const canManageExamId = (examId) => manageableExams.some((exam) => exam._id === examId);
@@ -290,7 +290,12 @@ export default function ExamManagement() {
     try {
       if (editingExamId) {
         setSavingId(editingExamId);
-        await api.put(`/exams/${editingExamId}`, toExamPayload(examForm));
+        const payload = toExamPayload(examForm);
+        if (scheduleOnly) {
+          await api.patch(`/exams/${editingExamId}/schedule`, { startDate: payload.startDate, extraTimeMinutes: payload.extraTimeMinutes });
+        } else {
+          await api.put(`/exams/${editingExamId}`, payload);
+        }
         setEditingExamId("");
         setExamForm(blankExam);
         setModal(null);
@@ -468,9 +473,7 @@ export default function ExamManagement() {
 
     setSavingId(exam._id);
     try {
-      await api.put(`/exams/${exam._id}`, toExamPayload(exam, {
-        extraTimeMinutes: (Number(exam.extraTimeMinutes) || 0) + minutes
-      }));
+      await api.patch(`/exams/${exam._id}/schedule`, { startDate: exam.startDate, extraTimeMinutes: (Number(exam.extraTimeMinutes) || 0) + minutes });
       setModal(null);
       setExtraTimeForm({ examId: exam._id, minutes: 5 });
       load();
@@ -484,9 +487,7 @@ export default function ExamManagement() {
 
     setSavingId(exam._id);
     try {
-      await api.put(`/exams/${exam._id}`, toExamPayload(exam, {
-        startDate: startDate.toISOString()
-      }));
+      await api.patch(`/exams/${exam._id}/schedule`, { startDate: startDate.toISOString() });
       load();
     } finally {
       setSavingId("");
@@ -529,7 +530,7 @@ export default function ExamManagement() {
   const examDateValue = examForm.startDate ? examForm.startDate.slice(0, 10) : "";
   const examStartTimeValue = examForm.startDate ? examForm.startDate.slice(11, 16) : "";
   const calculatedEndDate = calculatedExamEndDate(examForm);
-  const scheduleOnly = Boolean(editingExamId) && !isAdmin;
+  const scheduleOnly = Boolean(editingExamId) && !canManageExamId(editingExamId);
 
   async function openQuestionDetails(exam, fallbackQuestions = []) {
     const latestQuestions = await loadQuestions(exam._id);
@@ -657,7 +658,7 @@ export default function ExamManagement() {
         { key: "startDate", label: "Starts", render: (row) => formatDateTime(row.startDate) },
         { key: "endDate", label: "Ends", render: (row) => formatDateTime(row.endDate) },
         { key: "actions", label: "Actions", render: (row) => (
-          <div className="flex items-center gap-2"><ActionIconButton label="Edit schedule" icon={CalendarClock} onClick={() => openEditSchedule(row)} tone="amber" />{isAdmin && <><ActionIconButton label="Edit questions" icon={Pencil} onClick={() => manageExamQuestions(row)} tone="blue" /><ActionIconButton label="Delete exam" icon={Trash2} onClick={() => setDeleteTarget(row)} tone="red" /></>}</div>
+          <div className="flex items-center gap-2"><ActionIconButton label={canManageExam(row) ? "Edit exam" : "Edit schedule"} icon={CalendarClock} onClick={() => openEditSchedule(row)} tone="amber" />{canManageExam(row) && <ActionIconButton label="Edit questions" icon={Pencil} onClick={() => manageExamQuestions(row)} tone="blue" />}{isAdmin && <><ActionIconButton label="Delete exam" icon={Trash2} onClick={() => setDeleteTarget(row)} tone="red" /></>}</div>
         ) }
       ]} rows={exams} />
       <section id="exam-questions" className="space-y-4 rounded-xl border border-blue-100 bg-white p-4 shadow-soft dark:border-slate-800 dark:bg-[#111a2b]">
@@ -751,9 +752,9 @@ export default function ExamManagement() {
                       </div>
                       <p className="mt-3 whitespace-pre-wrap text-sm font-semibold leading-6 text-slate-950 dark:text-slate-100">{question.questionText}</p>
                     </div>
-                    {isAdmin && <div className="flex shrink-0 gap-2">
+                    {canManageExamId(questionExamId(question)) && <div className="flex shrink-0 gap-2">
                       <ActionIconButton label="Edit question" icon={Pencil} onClick={() => { setQuestionDetail(null); openEditQuestion(question); }} tone="blue" />
-                      <ActionIconButton label="Delete question" icon={Trash2} onClick={() => { setQuestionDetail(null); setQuestionDeleteTarget(question); }} tone="red" />
+                      {isAdmin && <ActionIconButton label="Delete question" icon={Trash2} onClick={() => { setQuestionDetail(null); setQuestionDeleteTarget(question); }} tone="red" />}
                     </div>}
                   </div>
 
@@ -827,7 +828,7 @@ export default function ExamManagement() {
           </div>
         </div>
       )}      {modal === "exam" && (
-        <Modal title={editingExamId ? "Edit Schedule" : "Create Exam"} onClose={() => { setModal(null); setEditingExamId(""); }}>
+        <Modal title={editingExamId ? scheduleOnly ? "Edit Schedule" : "Edit Exam" : "Create Exam"} onClose={() => { setModal(null); setEditingExamId(""); }}>
           <form className="grid gap-3 sm:grid-cols-2" onSubmit={saveExam}>
             {formError && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm font-semibold text-red-700 dark:bg-red-950/30 dark:text-red-200 sm:col-span-2">{formError}</p>}
             {scheduleOnly && <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-700 dark:bg-amber-950/30 dark:text-amber-200 sm:col-span-2">You can change only the exam date, starting time and extra time.</p>}
@@ -854,7 +855,7 @@ export default function ExamManagement() {
             </div>
             <textarea className="input sm:col-span-2" placeholder="Description" value={examForm.description} onChange={(e) => setExamForm({ ...examForm, description: e.target.value })} disabled={scheduleOnly} />
             <div className="grid gap-3 sm:col-span-2 sm:grid-cols-2">
-              <button className="btn-secondary" type="submit" value="save" disabled={Boolean(editingExamId) && savingId === editingExamId}>{Boolean(editingExamId) && savingId === editingExamId ? "Saving..." : editingExamId ? "Save Schedule" : "Save Exam"}</button>
+              <button className="btn-secondary" type="submit" value="save" disabled={Boolean(editingExamId) && savingId === editingExamId}>{Boolean(editingExamId) && savingId === editingExamId ? "Saving..." : editingExamId && scheduleOnly ? "Save Schedule" : "Save Exam"}</button>
               {!editingExamId && <button className="btn-primary" type="submit" value="addQuestions"><Plus size={16} /> Save Exam and Add Questions</button>}
             </div>
           </form>

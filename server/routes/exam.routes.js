@@ -2,12 +2,12 @@ import { Router } from "express";
 import { z } from "zod";
 import { authorize, protect } from "../middlewares/auth.js";
 import { validate } from "../middlewares/validate.js";
-import { createExam, deleteExam, examSchema, grantRetake, listExams, pauseExam, recordViolation, resumeExam, saveAnswers, startExam, submitExam, updateExam } from "../controllers/exam.controller.js";
+import { scheduleExam, scheduleExamSchema, createExam, deleteExam, examSchema, grantRetake, listExams, pauseExam, recordViolation, resumeExam, saveAnswers, startExam, submitExam, updateExam } from "../controllers/exam.controller.js";
 
 const router = Router();
 
-router.get("/", protect, authorize("ADMIN", "STUDENT"), listExams);
-router.post("/", protect, authorize("ADMIN"), validate(examSchema), createExam);
+router.get("/", protect, authorize("ADMIN", "CUSTOMER_SERVICE", "STUDENT"), listExams);
+router.post("/", protect, authorize("ADMIN", "CUSTOMER_SERVICE"), validate(examSchema), createExam);
 router.post("/start", protect, authorize("STUDENT"), validate(z.object({ body: z.object({ examId: z.string().min(1) }) })), startExam);
 router.put("/attempts/:attemptId/answers", protect, authorize("STUDENT"), validate(z.object({
   body: z.object({
@@ -21,7 +21,8 @@ router.put("/attempts/:attemptId/answers", protect, authorize("STUDENT"), valida
 router.post("/submit", protect, authorize("STUDENT"), validate(z.object({ body: z.object({ attemptId: z.string().min(1) }) })), submitExam);
 router.post("/attempts/:attemptId/violation", protect, authorize("STUDENT"), recordViolation);
 router.post("/attempts/:attemptId/retake", protect, authorize("ADMIN"), grantRetake);
-router.put("/:id", protect, authorize("ADMIN"), validate(examSchema), updateExam);
+router.put("/:id", protect, authorize("ADMIN", "CUSTOMER_SERVICE"), validate(examSchema), updateExam);
+router.patch("/:id/schedule", protect, authorize("ADMIN", "CUSTOMER_SERVICE"), validate(scheduleExamSchema), scheduleExam);
 router.patch("/:id/pause", protect, authorize("ADMIN"), pauseExam);
 router.patch("/:id/resume", protect, authorize("ADMIN"), resumeExam);
 router.delete("/:id", protect, authorize("ADMIN"), deleteExam);

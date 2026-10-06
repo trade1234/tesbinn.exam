@@ -1,4 +1,4 @@
-// Admins manage every exam; customer service may only add questions to exams they created.
+// Admins manage every exam; customer service may edit only exams they created.
 export function canManageExam(user, exam) {
   if (!user || !exam) return false;
   if (user.role === "ADMIN") return true;

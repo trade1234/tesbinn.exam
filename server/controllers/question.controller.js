@@ -101,6 +101,7 @@ export async function updateQuestion(req, res, next) {
   try {
     const question = await Question.findById(req.params.id);
     if (!question) return res.status(404).json({ message: "Question not found" });
+    if (!(await ensureCanManageExams(req, res, [question.examId, req.body.examId]))) return;
     question.set(req.body);
     await question.save();
     res.json(question);

@@ -6,6 +6,7 @@ import { Answer } from "../models/Answer.js";
 import { courseMatchesTraining, findAssignedCourseForStudent } from "../utils/courseAccess.js";
 import { logActivity } from "../utils/logger.js";
 import { scheduledExamEnd, scheduledRemainingSeconds } from "../utils/examTiming.js";
+import { canManageExam } from "../utils/examOwnership.js";
 import { canGrantRetake } from "../utils/retakePolicy.js";
 import { isCertificateVisibleToStudent, issueCertificate } from "./certificate.controller.js";
 
@@ -99,16 +100,8 @@ export async function updateExam(req, res, next) {
   try {
     const exam = await Exam.findById(req.params.id);
     if (!exam) return res.status(404).json({ message: "Exam not found" });
-    if (req.user.role === "ADMIN") {
-      exam.set(req.body);
-    } else {
-      // Customer service may only reschedule: start time and extra time. Other details stay as they are.
-      const endDate = calculateEndDate(req.body.startDate, exam.durationMinutes, req.body.extraTimeMinutes);
-      if (new Date(req.body.startDate).toDateString() !== endDate.toDateString()) {
-        return res.status(400).json({ message: "Exam duration must end on the same date as the selected start date." });
-      }
-      exam.set({ startDate: req.body.startDate, extraTimeMinutes: req.body.extraTimeMinutes, endDate });
-    }
+    if (!canManageExam(req.user, exam)) return res.status(403).json({ message: "You can only edit exams you created" });
+    exam.set(req.body);
     await exam.save();
     res.json(exam);
   } catch (error) {
@@ -366,4 +359,24 @@ export async function resumeExam(req, res, next) {
   } catch (error) {
     next(error);
   }
+}
+
+export const scheduleExamSchema = z.object({ body: z.object({
+  startDate: z.coerce.date(),
+  extraTimeMinutes: z.coerce.number().min(0).optional()
+}).strict() });
+
+export async function scheduleExam(req, res, next) {
+  try {
+    const exam = await Exam.findById(req.params.id);
+    if (!exam) return res.status(404).json({ message: "Exam not found" });
+    const extraTimeMinutes = req.body.extraTimeMinutes ?? exam.extraTimeMinutes ?? 0;
+    const endDate = calculateEndDate(req.body.startDate, exam.durationMinutes, extraTimeMinutes);
+    if (new Date(req.body.startDate).toDateString() !== endDate.toDateString()) {
+      return res.status(400).json({ message: "Exam duration must end on the same date as the selected start date." });
+    }
+    exam.set({ startDate: req.body.startDate, extraTimeMinutes, endDate });
+    await exam.save();
+    res.json(exam);
+  } catch (error) { next(error); }
 }

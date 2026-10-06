@@ -157,7 +157,8 @@ export default function Layout({ role }) {
   ];
   const supportLinks = [
     { to: "/support", label: "Dashboard", icon: Headset },
-    { to: "/support/students", label: "Students", icon: Users }
+    { to: "/support/students", label: "Students", icon: Users },
+    { to: "/support/exams", label: "Exams & Schedule", icon: ClipboardList }
   ];
   const links = role === "ADMIN" ? adminLinks : role === "CUSTOMER_SERVICE" ? supportLinks : studentLinks;
   const roleTitle = role === "ADMIN" ? "Admin" : role === "CUSTOMER_SERVICE" ? "Support" : "Exams";

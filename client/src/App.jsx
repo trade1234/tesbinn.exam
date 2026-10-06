@@ -59,6 +59,7 @@ export default function App() {
         <Route element={<Layout role="CUSTOMER_SERVICE" />}>
           <Route path="/support" element={<CustomerServiceDashboard />} />
           <Route path="/support/students" element={<Students />} />
+          <Route path="/support/exams" element={<ExamManagement />} />
         </Route>
       </Route>
       <Route element={<ProtectedRoute role="STUDENT" />}>

@@ -14,7 +14,7 @@ function allowed(router, method, path, role) {
   return passed;
 }
 
-test("customer service can create, list and edit students only", () => {
+test("customer service can create, list and edit students", () => {
   assert.equal(allowed(users, "post", "/students", "CUSTOMER_SERVICE"), true);
   assert.equal(allowed(users, "post", "/students", "ADMIN"), true);
   assert.equal(allowed(users, "post", "/students", "STUDENT"), false);
@@ -26,10 +26,17 @@ test("customer service can create, list and edit students only", () => {
   }
 });
 
-test("customer service cannot access exams, questions, retakes or monitoring", () => {
-  for (const [router, method, path] of [[exams, "get", "/"], [exams, "post", "/"], [exams, "put", "/:id"], [exams, "post", "/attempts/:attemptId/retake"], [questions, "get", "/"], [questions, "post", "/"], [questions, "post", "/bulk"], [results, "get", "/live"], [results, "get", "/disqualified"]]) {
+test("customer service cannot delete exams or questions, approve retakes or monitor", () => {
+  for (const [router, method, path] of [[exams, "delete", "/:id"], [exams, "post", "/attempts/:attemptId/retake"], [questions, "delete", "/:id"], [results, "get", "/live"], [results, "get", "/disqualified"]]) {
     assert.equal(allowed(router, method, path, "CUSTOMER_SERVICE"), false, path);
     assert.equal(allowed(router, method, path, "ADMIN"), true, path);
   }
   assert.equal(allowed(users, "put", "/students/:id", "STUDENT"), false);
+});
+
+test("customer service can create and edit exams and schedule all exams", () => {
+  for (const [router, method, path] of [[exams, "get", "/"], [exams, "post", "/"], [exams, "put", "/:id"], [exams, "patch", "/:id/schedule"], [questions, "get", "/"], [questions, "post", "/"], [questions, "post", "/bulk"], [questions, "put", "/:id"]]) {
+    assert.equal(allowed(router, method, path, "CUSTOMER_SERVICE"), true, path);
+  }
+  assert.equal(allowed(exams, "patch", "/:id/schedule", "STUDENT"), false);
 });
