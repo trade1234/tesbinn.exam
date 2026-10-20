@@ -976,7 +976,7 @@ export default function ExamManagement() {
             ) : (
               <label className="space-y-1 text-sm font-semibold text-slate-600 dark:text-slate-300 sm:col-span-2">
                 <span>Answer key</span>
-                <input className="input" placeholder="Type the expected short answer" value={questionForm.correctAnswer} onChange={(event) => setQuestionForm({ ...questionForm, correctAnswer: event.target.value })} required />
+                <input className="input" placeholder="Expected answer (separate accepted alternatives with |)" value={questionForm.correctAnswer} onChange={(event) => setQuestionForm({ ...questionForm, correctAnswer: event.target.value })} required />
               </label>
             )}
 
@@ -1042,7 +1042,7 @@ export default function ExamManagement() {
             ) : (
               <label className="space-y-1 text-sm font-semibold text-slate-600 dark:text-slate-300 sm:col-span-2">
                 <span>Answer key</span>
-                <input className="input" placeholder="Type the expected short answer" value={questionForm.correctAnswer} onChange={(e) => setQuestionForm({ ...questionForm, correctAnswer: e.target.value })} required />
+                <input className="input" placeholder="Expected answer (separate accepted alternatives with |)" value={questionForm.correctAnswer} onChange={(e) => setQuestionForm({ ...questionForm, correctAnswer: e.target.value })} required />
               </label>
             )}
 

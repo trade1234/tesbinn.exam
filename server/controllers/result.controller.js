@@ -10,17 +10,7 @@ import { Course } from "../models/Course.js";
 import { Application } from "../models/Application.js";
 import { scheduledExamEnd, scheduledRemainingSeconds } from "../utils/examTiming.js";
 import { issueCertificate } from "./certificate.controller.js";
-
-function normalizeAnswer(value = "") {
-  return String(value).trim().replace(/\s+/g, " ").toLowerCase();
-}
-
-function isCorrectAnswer(question, selectedAnswer) {
-  if (question.questionType === "SHORT_ANSWER") {
-    return normalizeAnswer(selectedAnswer) === normalizeAnswer(question.correctAnswer);
-  }
-  return selectedAnswer === question.correctAnswer;
-}
+import { gradeAnswers, isCorrectAnswer } from "../utils/grading.js";
 
 function attemptEndsAt(attempt) {
   const exam = attempt.examId;
@@ -28,24 +18,26 @@ function attemptEndsAt(attempt) {
   return scheduledExamEnd(exam);
 }
 
-async function scoreAttempt(attempt, submittedAt = new Date()) {
+// Calculates the result an attempt should have under the current questions and pass mark, without saving it.
+export async function gradeAttempt(attempt) {
   const exam = attempt.examId?._id ? attempt.examId : await Exam.findById(attempt.examId).populate("courseId");
-  if (!exam) return;
-
-  const questions = await Question.find({ examId: exam._id });
-  const answers = await Answer.find({ attemptId: attempt._id });
+  if (!exam) return null;
+  const [questions, answers] = await Promise.all([
+    Question.find({ examId: exam._id }),
+    Answer.find({ attemptId: attempt._id })
+  ]);
   const answerMap = new Map(answers.map((answer) => [String(answer.questionId), answer.selectedAnswer]));
-  const score = questions.reduce((total, question) => {
-    return total + (isCorrectAnswer(question, answerMap.get(String(question._id))) ? question.marks : 0);
-  }, 0);
-  const questionsTotalMarks = questions.reduce((total, question) => total + question.marks, 0);
-  const totalMarks = questionsTotalMarks > 0 ? questionsTotalMarks : exam.totalMarks;
-  const roundedScore = Math.round(score * 100) / 100;
-  const percentage = totalMarks > 0 ? Math.round((roundedScore / totalMarks) * 10000) / 100 : 0;
+  return { exam, questions, answers, ...gradeAnswers({ questions, answerMap, exam }) };
+}
 
-  attempt.score = roundedScore;
-  attempt.percentage = percentage;
-  attempt.status = percentage >= exam.passPercentage ? "PASS" : "FAIL";
+async function scoreAttempt(attempt, submittedAt = new Date()) {
+  const grade = await gradeAttempt(attempt);
+  if (!grade) return;
+  const { exam, totalMarks } = grade;
+
+  attempt.score = grade.score;
+  attempt.percentage = grade.percentage;
+  attempt.status = grade.status;
   attempt.submittedAt = submittedAt;
   await attempt.save();
 
@@ -59,6 +51,19 @@ async function scoreAttempt(attempt, submittedAt = new Date()) {
       totalMarks
     });
   }
+}
+
+// Re-grades every completed attempt of an exam against the current answer key, marks and pass percentage.
+// Scores are stored at submit time, so they must be refreshed whenever questions or the pass mark change.
+export async function rescoreExamAttempts(examId) {
+  if (!examId) return 0;
+  const attempts = await ExamAttempt.find({ examId, status: { $in: ["PASS", "FAIL"] } })
+    .populate({ path: "examId", populate: { path: "courseId" } })
+    .populate("studentId");
+  for (const attempt of attempts) {
+    await scoreAttempt(attempt, attempt.submittedAt || new Date());
+  }
+  return attempts.length;
 }
 
 async function finalizeExpiredAttempts() {
@@ -464,11 +469,17 @@ export async function reviewResult(req, res, next) {
     if (!examObjectId) return res.status(404).json({ message: "Exam for this result was not found" });
 
     const [questions, answers] = await Promise.all([
-      Question.find({ examId: examObjectId }).sort({ createdAt: 1 }),
+      Question.find({ examId: examObjectId }).sort({ order: 1, createdAt: 1 }),
       Answer.find({ attemptId: attempt._id })
     ]);
     const answerMap = new Map(answers.map((answer) => [String(answer.questionId), answer.selectedAnswer || ""]));
-    const totalMarks = questions.reduce((total, question) => total + question.marks, 0) || attempt.examId?.totalMarks || 0;
+    const grade = gradeAnswers({ questions, answerMap, exam: attempt.examId });
+    const totalMarks = grade.totalMarks;
+    // Keep the stored result in step with the answers shown below if it was saved under an older answer key.
+    const isGraded = attempt.status === "PASS" || attempt.status === "FAIL";
+    if (isGraded && attempt.examId?._id && (attempt.score !== grade.score || attempt.percentage !== grade.percentage || attempt.status !== grade.status)) {
+      await scoreAttempt(attempt, attempt.submittedAt || new Date());
+    }
     const items = questions.map((question, index) => {
       const selectedAnswer = answerMap.get(String(question._id)) || "";
       const correct = isCorrectAnswer(question, selectedAnswer);

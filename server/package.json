@@ -8,7 +8,8 @@
     "start": "node index.js",
     "test": "node --test tests/*.test.js",
     "seed": "node seed.js",
-    "import:coffee-exam": "node scripts/importCoffeeCuppingFinalExam.js"
+    "import:coffee-exam": "node scripts/importCoffeeCuppingFinalExam.js",
+    "rescore": "node scripts/rescoreResults.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

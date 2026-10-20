@@ -3,6 +3,7 @@ import { Question } from "../models/Question.js";
 import { Exam } from "../models/Exam.js";
 import { canManageExam } from "../utils/examOwnership.js";
 import { findAssignedCourseForStudent } from "../utils/courseAccess.js";
+import { rescoreExamAttempts } from "./result.controller.js";
 
 async function ensureCanManageExams(req, res, examIds) {
   const ids = [...new Set(examIds.filter(Boolean).map(String))];
@@ -110,8 +111,16 @@ export async function updateQuestion(req, res, next) {
     const question = await Question.findById(req.params.id);
     if (!question) return res.status(404).json({ message: "Question not found" });
     if (!(await ensureCanManageExams(req, res, [question.examId, req.body.examId]))) return;
+    const previousExamId = String(question.examId);
+    const gradingKey = () => `${question.examId}|${question.questionType}|${question.correctAnswer}|${question.marks}`;
+    const gradingBefore = gradingKey();
     question.set(req.body);
     await question.save();
+    // Re-grade only when something that affects marking changed (not for wording or option text edits).
+    if (gradingBefore !== gradingKey()) {
+      await rescoreExamAttempts(question.examId);
+      if (previousExamId !== String(question.examId)) await rescoreExamAttempts(previousExamId);
+    }
     res.json(question);
   } catch (error) {
     next(error);
@@ -123,6 +132,7 @@ export async function deleteQuestion(req, res, next) {
     const question = await Question.findById(req.params.id);
     if (!question) return res.status(404).json({ message: "Question not found" });
     await question.deleteOne();
+    await rescoreExamAttempts(question.examId);
     res.status(204).end();
   } catch (error) {
     next(error);

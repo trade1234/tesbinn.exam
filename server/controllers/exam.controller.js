@@ -10,17 +10,9 @@ import { scheduledExamEnd, scheduledRemainingSeconds } from "../utils/examTiming
 import { canManageExam } from "../utils/examOwnership.js";
 import { canGrantRetake } from "../utils/retakePolicy.js";
 import { isCertificateVisibleToStudent, issueCertificate } from "./certificate.controller.js";
+import { rescoreExamAttempts } from "./result.controller.js";
+import { gradeAnswers } from "../utils/grading.js";
 
-function normalizeAnswer(value = "") {
-  return String(value).trim().replace(/\s+/g, " ").toLowerCase();
-}
-
-function isCorrectAnswer(question, selectedAnswer) {
-  if (question.questionType === "SHORT_ANSWER") {
-    return normalizeAnswer(selectedAnswer) === normalizeAnswer(question.correctAnswer);
-  }
-  return selectedAnswer === question.correctAnswer;
-}
 function calculateEndDate(startDate, durationMinutes, extraTimeMinutes = 0) {
   const totalMinutes = Number(durationMinutes) + Number(extraTimeMinutes || 0);
   return new Date(new Date(startDate).getTime() + totalMinutes * 60000);
@@ -103,8 +95,11 @@ export async function updateExam(req, res, next) {
     const exam = await Exam.findById(req.params.id);
     if (!exam) return res.status(404).json({ message: "Exam not found" });
     if (!canManageExam(req.user, exam)) return res.status(403).json({ message: "You can only edit exams you created" });
+    const gradingBefore = `${exam.passPercentage}|${exam.totalMarks}`;
     exam.set(req.body);
+    const gradingChanged = gradingBefore !== `${exam.passPercentage}|${exam.totalMarks}`;
     await exam.save();
+    if (gradingChanged) await rescoreExamAttempts(exam._id);
     res.json(exam);
   } catch (error) {
     next(error);
@@ -285,17 +280,11 @@ export async function submitExam(req, res, next) {
     const questions = await Question.find({ examId: attempt.examId }).sort({ order: 1, createdAt: 1 });
     const answers = await Answer.find({ attemptId: attempt._id });
     const answerMap = new Map(answers.map((answer) => [String(answer.questionId), answer.selectedAnswer]));
-    const score = questions.reduce((total, question) => {
-      return total + (isCorrectAnswer(question, answerMap.get(String(question._id))) ? question.marks : 0);
-    }, 0);
-    const questionsTotalMarks = questions.reduce((total, question) => total + question.marks, 0);
-    const totalMarks = questionsTotalMarks > 0 ? questionsTotalMarks : exam.totalMarks;
-    const roundedScore = Math.round(score * 100) / 100;
-    const percentage = totalMarks > 0 ? Math.round((roundedScore / totalMarks) * 10000) / 100 : 0;
+    const { score: roundedScore, totalMarks, percentage, status, correctAnswers } = gradeAnswers({ questions, answerMap, exam });
 
     attempt.score = roundedScore;
     attempt.percentage = percentage;
-    attempt.status = percentage >= exam.passPercentage ? "PASS" : "FAIL";
+    attempt.status = status;
     attempt.submittedAt = new Date();
     await attempt.save();
 
@@ -310,7 +299,7 @@ export async function submitExam(req, res, next) {
       certificate,
       totalMarks,
       totalQuestions: questions.length,
-      correctAnswers: questions.filter((q) => isCorrectAnswer(q, answerMap.get(String(q._id)))).length,
+      correctAnswers,
       result: {
         attemptId: attempt._id,
         studentName: req.user.name,
