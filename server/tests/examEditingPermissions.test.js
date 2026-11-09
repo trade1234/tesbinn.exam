@@ -30,6 +30,16 @@ test("exam editing enforces ownership and scheduling preserves exam content", as
     assert.equal(exam.endDate.toISOString(), "2026-10-06T09:15:00.000Z");
     assert.equal(scheduleExamSchema.safeParse({ body: { ...req.body, title: "Attack" } }).success, false);
     assert.equal(scheduleExamSchema.safeParse({ body: { ...req.body, extraTimeMinutes: -1 } }).success, false);
+    // 02:00-03:15 in UTC+3 crosses midnight in UTC but stays on one local day, so it must be allowed.
+    req.body = { startDate: new Date("2026-10-06T23:00:00Z"), extraTimeMinutes: 15, timezoneOffsetMinutes: -180 };
+    res = response();
+    await scheduleExam(req, res, (err) => { throw err; });
+    assert.equal(res.code, 200);
+    assert.equal(exam.endDate.toISOString(), "2026-10-07T00:15:00.000Z");
+    req.body = { startDate: new Date("2026-10-06T20:30:00Z"), extraTimeMinutes: 15, timezoneOffsetMinutes: -180 };
+    res = response();
+    await scheduleExam(req, res, (err) => { throw err; });
+    assert.equal(res.code, 400);
   } finally { Exam.findById = original; }
 });
 

@@ -18,6 +18,15 @@ function calculateEndDate(startDate, durationMinutes, extraTimeMinutes = 0) {
   return new Date(new Date(startDate).getTime() + totalMinutes * 60000);
 }
 
+// Compare calendar days in the scheduler's timezone (browser getTimezoneOffset), not the server's UTC clock.
+function isSameScheduleDay(startDate, endDate, timezoneOffsetMinutes) {
+  if (timezoneOffsetMinutes === undefined) return new Date(startDate).toDateString() === new Date(endDate).toDateString();
+  const day = (date) => new Date(new Date(date).getTime() - timezoneOffsetMinutes * 60000).toISOString().slice(0, 10);
+  return day(startDate) === day(endDate);
+}
+
+const timezoneOffsetSchema = z.coerce.number().int().min(-840).max(840).optional();
+
 export const examSchema = z.object({
   body: z.object({
     courseId: z.string().regex(/^[a-fA-F0-9]{24}$/, "Select a valid course"),
@@ -28,18 +37,17 @@ export const examSchema = z.object({
     totalMarks: z.coerce.number().min(1),
     passPercentage: z.coerce.number().min(0).max(100),
     startDate: z.coerce.date(),
-    endDate: z.coerce.date().optional()
+    endDate: z.coerce.date().optional(),
+    timezoneOffsetMinutes: timezoneOffsetSchema
   }).superRefine((exam, ctx) => {
     const calculatedEnd = calculateEndDate(exam.startDate, exam.durationMinutes, exam.extraTimeMinutes);
-    const startDay = new Date(exam.startDate);
-    const endDay = new Date(calculatedEnd);
-    if (startDay.getFullYear() !== endDay.getFullYear() || startDay.getMonth() !== endDay.getMonth() || startDay.getDate() !== endDay.getDate()) {
+    if (!isSameScheduleDay(exam.startDate, calculatedEnd, exam.timezoneOffsetMinutes)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "Exam duration must end on the same date as the selected start date."
       });
     }
-  }).transform((exam) => ({
+  }).transform(({ timezoneOffsetMinutes, ...exam }) => ({
     ...exam,
     endDate: calculateEndDate(exam.startDate, exam.durationMinutes, exam.extraTimeMinutes)
   }))
@@ -354,7 +362,8 @@ export async function resumeExam(req, res, next) {
 
 export const scheduleExamSchema = z.object({ body: z.object({
   startDate: z.coerce.date(),
-  extraTimeMinutes: z.coerce.number().min(0).optional()
+  extraTimeMinutes: z.coerce.number().min(0).optional(),
+  timezoneOffsetMinutes: timezoneOffsetSchema
 }).strict() });
 
 export async function scheduleExam(req, res, next) {
@@ -363,7 +372,7 @@ export async function scheduleExam(req, res, next) {
     if (!exam) return res.status(404).json({ message: "Exam not found" });
     const extraTimeMinutes = req.body.extraTimeMinutes ?? exam.extraTimeMinutes ?? 0;
     const endDate = calculateEndDate(req.body.startDate, exam.durationMinutes, extraTimeMinutes);
-    if (new Date(req.body.startDate).toDateString() !== endDate.toDateString()) {
+    if (!isSameScheduleDay(req.body.startDate, endDate, req.body.timezoneOffsetMinutes)) {
       return res.status(400).json({ message: "Exam duration must end on the same date as the selected start date." });
     }
     exam.set({ startDate: req.body.startDate, extraTimeMinutes, endDate });

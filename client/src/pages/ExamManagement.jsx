@@ -184,6 +184,11 @@ function ActionIconButton({ label, icon: Icon, onClick, tone = "slate" }) {
   );
 }
 
+// Lets the server check "same day" in the scheduler's local timezone instead of UTC.
+function timezoneOffsetFor(date) {
+  return (date && Number.isFinite(date.getTime()) ? date : new Date()).getTimezoneOffset();
+}
+
 function toExamPayload(exam, overrides = {}) {
   const payload = {
     courseId: exam.courseId?._id || exam.courseId,
@@ -201,7 +206,8 @@ function toExamPayload(exam, overrides = {}) {
   return {
     ...payload,
     startDate: startDate ? startDate.toISOString() : payload.startDate,
-    endDate: endDate ? endDate.toISOString() : payload.endDate
+    endDate: endDate ? endDate.toISOString() : payload.endDate,
+    timezoneOffsetMinutes: timezoneOffsetFor(startDate)
   };
 }
 
@@ -305,7 +311,7 @@ export default function ExamManagement() {
         setSavingId(editingExamId);
         const payload = toExamPayload(examForm);
         if (scheduleOnly) {
-          await api.patch(`/exams/${editingExamId}/schedule`, { startDate: payload.startDate, extraTimeMinutes: payload.extraTimeMinutes });
+          await api.patch(`/exams/${editingExamId}/schedule`, { startDate: payload.startDate, extraTimeMinutes: payload.extraTimeMinutes, timezoneOffsetMinutes: payload.timezoneOffsetMinutes });
         } else {
           await api.put(`/exams/${editingExamId}`, payload);
         }
@@ -485,12 +491,15 @@ export default function ExamManagement() {
     const minutes = Number(extraTimeForm.minutes) || 0;
     if (!exam || minutes <= 0) return;
 
+    setFormError("");
     setSavingId(exam._id);
     try {
-      await api.patch(`/exams/${exam._id}/schedule`, { startDate: exam.startDate, extraTimeMinutes: (Number(exam.extraTimeMinutes) || 0) + minutes });
+      await api.patch(`/exams/${exam._id}/schedule`, { startDate: exam.startDate, extraTimeMinutes: (Number(exam.extraTimeMinutes) || 0) + minutes, timezoneOffsetMinutes: timezoneOffsetFor(new Date(exam.startDate)) });
       setModal(null);
       setExtraTimeForm({ examId: exam._id, minutes: 5 });
       load();
+    } catch (error) {
+      setFormError(apiErrorMessage(error));
     } finally {
       setSavingId("");
     }
@@ -501,8 +510,10 @@ export default function ExamManagement() {
 
     setSavingId(exam._id);
     try {
-      await api.patch(`/exams/${exam._id}/schedule`, { startDate: startDate.toISOString() });
+      await api.patch(`/exams/${exam._id}/schedule`, { startDate: startDate.toISOString(), timezoneOffsetMinutes: timezoneOffsetFor(startDate) });
       load();
+    } catch (error) {
+      window.alert(apiErrorMessage(error));
     } finally {
       setSavingId("");
     }
@@ -607,7 +618,7 @@ export default function ExamManagement() {
           <p className="break-words text-sm text-slate-500">Create exams, set start and end time, then start an exam immediately when needed.</p>
         </div>
         <div className="grid gap-2 sm:flex sm:flex-wrap sm:justify-end">
-          <button className="btn-secondary" onClick={() => setModal("extraTime")}><Clock3 size={16} /> Extra Time</button>
+          <button className="btn-secondary" onClick={() => { setFormError(""); setModal("extraTime"); }}><Clock3 size={16} /> Extra Time</button>
           <button className="btn-secondary" onClick={openAddQuestion}><Plus size={16} /> Add Question</button>
           <button className="btn-primary" onClick={openCreateExam}><Plus size={16} /> Create Exam</button>
         </div>
@@ -878,6 +889,7 @@ export default function ExamManagement() {
       {modal === "extraTime" && (
         <Modal title="Add Extra Time" onClose={() => setModal(null)}>
           <form className="grid gap-3" onSubmit={addExtraTime}>
+            {formError && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm font-semibold text-red-700 dark:bg-red-950/30 dark:text-red-200">{formError}</p>}
             <label className="space-y-1 text-sm font-semibold text-slate-600 dark:text-slate-300">
               <span>Exam</span>
               <select className="input" value={extraTimeForm.examId} onChange={(e) => setExtraTimeForm({ ...extraTimeForm, examId: e.target.value })} required>
