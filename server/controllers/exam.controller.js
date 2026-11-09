@@ -18,13 +18,7 @@ function calculateEndDate(startDate, durationMinutes, extraTimeMinutes = 0) {
   return new Date(new Date(startDate).getTime() + totalMinutes * 60000);
 }
 
-// Compare calendar days in the scheduler's timezone (browser getTimezoneOffset), not the server's UTC clock.
-function isSameScheduleDay(startDate, endDate, timezoneOffsetMinutes) {
-  if (timezoneOffsetMinutes === undefined) return new Date(startDate).toDateString() === new Date(endDate).toDateString();
-  const day = (date) => new Date(new Date(date).getTime() - timezoneOffsetMinutes * 60000).toISOString().slice(0, 10);
-  return day(startDate) === day(endDate);
-}
-
+// Exams may run past midnight. Still accepted (and ignored) so pages already open in a browser keep working.
 const timezoneOffsetSchema = z.coerce.number().int().min(-840).max(840).optional();
 
 export const examSchema = z.object({
@@ -39,14 +33,6 @@ export const examSchema = z.object({
     startDate: z.coerce.date(),
     endDate: z.coerce.date().optional(),
     timezoneOffsetMinutes: timezoneOffsetSchema
-  }).superRefine((exam, ctx) => {
-    const calculatedEnd = calculateEndDate(exam.startDate, exam.durationMinutes, exam.extraTimeMinutes);
-    if (!isSameScheduleDay(exam.startDate, calculatedEnd, exam.timezoneOffsetMinutes)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Exam duration must end on the same date as the selected start date."
-      });
-    }
   }).transform(({ timezoneOffsetMinutes, ...exam }) => ({
     ...exam,
     endDate: calculateEndDate(exam.startDate, exam.durationMinutes, exam.extraTimeMinutes)
@@ -372,9 +358,6 @@ export async function scheduleExam(req, res, next) {
     if (!exam) return res.status(404).json({ message: "Exam not found" });
     const extraTimeMinutes = req.body.extraTimeMinutes ?? exam.extraTimeMinutes ?? 0;
     const endDate = calculateEndDate(req.body.startDate, exam.durationMinutes, extraTimeMinutes);
-    if (!isSameScheduleDay(req.body.startDate, endDate, req.body.timezoneOffsetMinutes)) {
-      return res.status(400).json({ message: "Exam duration must end on the same date as the selected start date." });
-    }
     exam.set({ startDate: req.body.startDate, extraTimeMinutes, endDate });
     await exam.save();
     req.activityDetails = `Updated schedule for "${exam.title}". Starts: ${new Date(exam.startDate).toISOString()}; Ends: ${endDate.toISOString()}; Extra time: ${extraTimeMinutes} minutes.`;

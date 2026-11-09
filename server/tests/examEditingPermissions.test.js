@@ -30,16 +30,17 @@ test("exam editing enforces ownership and scheduling preserves exam content", as
     assert.equal(exam.endDate.toISOString(), "2026-10-06T09:15:00.000Z");
     assert.equal(scheduleExamSchema.safeParse({ body: { ...req.body, title: "Attack" } }).success, false);
     assert.equal(scheduleExamSchema.safeParse({ body: { ...req.body, extraTimeMinutes: -1 } }).success, false);
-    // 02:00-03:15 in UTC+3 crosses midnight in UTC but stays on one local day, so it must be allowed.
-    req.body = { startDate: new Date("2026-10-06T23:00:00Z"), extraTimeMinutes: 15, timezoneOffsetMinutes: -180 };
+    // 23:00 + 60 + 10 min in UTC+3 ends 00:10 the next day; exams may run past midnight.
+    req.body = { startDate: new Date("2026-11-09T20:00:00Z"), extraTimeMinutes: 10, timezoneOffsetMinutes: -180 };
     res = response();
     await scheduleExam(req, res, (err) => { throw err; });
     assert.equal(res.code, 200);
-    assert.equal(exam.endDate.toISOString(), "2026-10-07T00:15:00.000Z");
-    req.body = { startDate: new Date("2026-10-06T20:30:00Z"), extraTimeMinutes: 15, timezoneOffsetMinutes: -180 };
+    assert.equal(exam.endDate.toISOString(), "2026-11-09T21:10:00.000Z");
+    // Older pages that don't send a timezone still work.
+    req.body = { startDate: new Date("2026-11-09T23:30:00Z"), extraTimeMinutes: 0 };
     res = response();
     await scheduleExam(req, res, (err) => { throw err; });
-    assert.equal(res.code, 400);
+    assert.equal(res.code, 200);
   } finally { Exam.findById = original; }
 });
 

@@ -57,12 +57,6 @@ function calculatedExamEndDate(exam) {
   return new Date(startDate.getTime() + totalMinutes * 60000);
 }
 
-function isSameLocalDate(dateA, dateB) {
-  return dateA.getFullYear() === dateB.getFullYear()
-    && dateA.getMonth() === dateB.getMonth()
-    && dateA.getDate() === dateB.getDate();
-}
-
 function defaultExamForm() {
   const startDate = new Date(Date.now() + 5 * 60000);
   return { ...blankExam, startDate: toLocalDateTimeInput(startDate) };
@@ -299,10 +293,6 @@ export default function ExamManagement() {
     const endDate = calculatedExamEndDate(examForm);
     if (!startDate || !Number.isFinite(startDate.getTime()) || !endDate || !Number.isFinite(endDate.getTime())) {
       setFormError("Select a valid exam start date and time.");
-      return;
-    }
-    if (startDate && endDate && !isSameLocalDate(startDate, endDate)) {
-      setFormError("Exam end time must remain on the same date as the selected exam date.");
       return;
     }
 
